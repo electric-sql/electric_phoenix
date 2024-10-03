@@ -7,6 +7,8 @@ defmodule Electric.Phoenix.MixProject do
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
+      consolidate_protocols: Mix.env() in [:dev, :prod],
       deps: deps(),
       docs: docs(),
       package: package(),
@@ -27,7 +29,12 @@ defmodule Electric.Phoenix.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:electric_client, path: "../archived-electric-next/elixir_client/"},
+      {:nimble_options, "~> 1.1"},
+      {:phoenix_live_view, "~> 0.20"},
+      {:ecto_sql, "~> 3.10", optional: true},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:floki, "~> 0.36", only: [:test]}
     ]
   end
 
@@ -49,4 +56,7 @@ defmodule Electric.Phoenix.MixProject do
   defp description do
     "A work-in-progress adapter to integrate Electric SQL's streaming udpates into Phoenix."
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end
