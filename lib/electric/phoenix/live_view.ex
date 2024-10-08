@@ -3,7 +3,7 @@ defmodule Electric.Phoenix.LiveView do
 
   require Record
 
-  Record.defrecordp(:event, :"$electric_event", [:name, :operation, :item])
+  Record.defrecordp(:event, :"$electric_event", [:name, :operation, :item, opts: []])
   Record.defrecordp(:component_event, :"$electric_component_event", [:component, :event])
 
   @type root_event() ::
@@ -51,13 +51,17 @@ defmodule Electric.Phoenix.LiveView do
   end
 
   @doc false
-  def stream_update(socket, component_event(component: component, event: event), _opts) do
-    Phoenix.LiveView.send_update(component, electric: event)
+  def stream_update(socket, component_event(component: component, event: event), opts) do
+    Phoenix.LiveView.send_update(component, electric: event(event, opts: opts))
     socket
   end
 
-  def stream_update(socket, event(operation: :insert, name: name, item: item) = event, opts) do
-    Phoenix.LiveView.stream_insert(socket, name, item, opts)
+  def stream_update(
+        socket,
+        event(operation: :insert, name: name, item: item, opts: event_opts),
+        opts
+      ) do
+    Phoenix.LiveView.stream_insert(socket, name, item, Keyword.merge(event_opts, opts))
   end
 
   def stream_update(socket, event(operation: :delete, name: name, item: item), _opts) do
@@ -67,24 +71,14 @@ defmodule Electric.Phoenix.LiveView do
   defp client_live_stream(client, name, query, component) do
     pid = self()
 
-    # we only want the initial snapshot data to populate the initial list
-    # which is a list of pure inserts.
-    # at the end of the snapshot we get an up-to-date message
-
-    # Task.start_link(fn ->
-    #   client
-    #   |> Electric.Client.stream(query)
-    #   |> Stream.each(&send_live_event(&1, pid, name))
-    #   |> Stream.run()
-    # end)
-
     client
-    |> Electric.Client.stream(query, live: false)
+    |> Electric.Client.stream(query, live: false, snapshot: true, send_deltas: false)
     |> Stream.flat_map(&live_stream_message(&1, client, name, query, pid, component))
   end
 
   defp live_stream_message(
-         %Message.ChangeMessage{headers: %{operation: :insert}, value: value},
+         %Message.ChangeMessage{value: value},
+         # %Message.ChangeMessage{headers: %{operation: :insert}, value: value},
          _client,
          _name,
          _query,
@@ -97,8 +91,7 @@ defmodule Electric.Phoenix.LiveView do
   defp live_stream_message(%Message.ResumeMessage{} = resume, client, name, query, pid, component) do
     Task.start_link(fn ->
       client
-      |> Electric.Client.stream(query, resume: resume)
-      |> Stream.each(&dbg/1)
+      |> Electric.Client.stream(query, resume: resume, send_deltas: false)
       |> Stream.each(&send_live_event(&1, pid, name, component))
       |> Stream.run()
     end)

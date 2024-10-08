@@ -18,7 +18,7 @@ defmodule Electric.Phoenix.LiveViewTest do
   import Plug.Conn
 
   describe "stream/3" do
-    test "simple live view", %{conn: conn} do
+    test "simple live view with only a snapshot", %{conn: conn} do
       {:ok, client} = Client.Mock.new()
 
       users = [
@@ -101,6 +101,66 @@ defmodule Electric.Phoenix.LiveViewTest do
       end
     end
 
+    test "simple live view with snapshot and updates", %{conn: conn} do
+      {:ok, client} = Client.Mock.new()
+
+      snapshot_users = [
+        %{id: 1, name: "User 1"},
+        %{id: 2, name: "User 2"},
+        %{id: 3, name: "User 3"}
+      ]
+
+      update_users =
+        snapshot_users
+        |> Enum.map(&Map.update!(&1, :name, fn _name -> "Updated #{&1.id}" end))
+
+      user_updates = Client.Mock.transaction(update_users, lsn: 1234, operation: :update)
+
+      body =
+        Client.Mock.transaction(snapshot_users, operation: :insert, up_to_date: false) ++
+          user_updates
+
+      Client.Mock.async_response(client,
+        status: 200,
+        headers: [
+          schema: %{id: %{type: "int8"}, name: %{type: "text"}},
+          last_offset: Client.Offset.first(),
+          shape_id: "users-1"
+        ],
+        body: body
+      )
+
+      conn =
+        conn
+        |> put_private(:electric_client, client)
+        |> put_private(:test_pid, self())
+
+      {:ok, lv, html} = live(conn, "/stream")
+
+      for %{name: name} <- snapshot_users do
+        assert html =~ name
+      end
+
+      {:ok, _} =
+        Client.Mock.response(client,
+          status: 200,
+          headers: [
+            schema: %{id: %{type: "int8"}, name: %{type: "text"}},
+            last_offset: Client.Offset.first(),
+            shape_id: "users-1"
+          ],
+          body: user_updates
+        )
+
+      assert_receive {:electric, _}
+
+      html = render(lv)
+
+      for %{name: name} <- update_users do
+        assert html =~ name
+      end
+    end
+
     test "view with component", %{conn: conn} do
       {:ok, client} = Client.Mock.new()
 
@@ -152,7 +212,6 @@ defmodule Electric.Phoenix.LiveViewTest do
       end
 
       html = render(lv)
-      IO.puts(html)
 
       for %{name: name} <- users ++ users2 do
         assert html =~ name
