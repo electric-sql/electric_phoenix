@@ -72,64 +72,84 @@ defmodule Electric.Phoenix.LiveView do
     pid = self()
 
     client
-    |> Electric.Client.stream(query, live: false, snapshot: true, send_deltas: false)
-    |> Stream.flat_map(&live_stream_message(&1, client, name, query, pid, component))
+    |> Electric.Client.stream(query, snoobar: true, update_mode: :full)
+    # |> Stream.flat_map(&live_stream_message(&1, client, name, query, pid, component))
+    |> Stream.transform(
+      fn -> {[], nil} end,
+      &live_stream_message(&1, &2, client, name, query, pid, component),
+      &update_mode(&1, client, name, query, pid, component)
+    )
   end
 
   defp live_stream_message(
-         %Message.ChangeMessage{value: value},
-         # %Message.ChangeMessage{headers: %{operation: :insert}, value: value},
+         %Message.ChangeMessage{headers: %{operation: :insert}, value: value},
+         acc,
          _client,
          _name,
          _query,
          _pid,
          _component
        ) do
-    [value]
+    {[value], acc}
   end
 
-  defp live_stream_message(%Message.ResumeMessage{} = resume, client, name, query, pid, component) do
+  defp live_stream_message(
+         %Message.ChangeMessage{headers: %{operation: operation}} = msg,
+         {updates, resume},
+         _client,
+         _name,
+         _query,
+         _pid,
+         _component
+       )
+       when operation in [:update, :delete] do
+    {[], {[msg | updates], resume}}
+  end
+
+  defp live_stream_message(
+         %Message.ResumeMessage{} = resume,
+         {updates, nil},
+         _client,
+         _name,
+         _query,
+         _pid,
+         _component
+       ) do
+    {[], {updates, resume}}
+  end
+
+  defp live_stream_message(_message, acc, _client, _name, _query, _pid, _component) do
+    {[], acc}
+  end
+
+  defp update_mode({updates, resume}, client, name, query, pid, component) do
+    # need to send every update as a separate message.
+    for event <- updates |> Enum.reverse() |> Enum.map(&wrap_msg(&1, name, component)),
+        do: send(pid, {:electric, event})
+
     Task.start_link(fn ->
       client
-      |> Electric.Client.stream(query, resume: resume, send_deltas: false)
+      |> Electric.Client.stream(query, resume: resume, update_mode: :full)
       |> Stream.each(&send_live_event(&1, pid, name, component))
       |> Stream.run()
     end)
-
-    []
   end
 
-  defp live_stream_message(_message, _client, _name, _query, _pid, _component) do
-    []
-  end
-
-  defp send_live_event(
-         %Message.ChangeMessage{headers: %{operation: operation}, value: item},
-         pid,
-         name,
-         component
-       )
-       when operation in [:insert, :update] do
-    send(
-      pid,
-      {:electric, wrap_event(component, event(operation: :insert, name: name, item: item))}
-    )
-  end
-
-  defp send_live_event(
-         %Message.ChangeMessage{headers: %{operation: :delete}, value: item},
-         pid,
-         name,
-         component
-       ) do
-    send(
-      pid,
-      {:electric, wrap_event(component, event(operation: :delete, name: name, item: item))}
-    )
+  defp send_live_event(%Message.ChangeMessage{} = msg, pid, name, component) do
+    send(pid, {:electric, wrap_msg(msg, name, component)})
   end
 
   defp send_live_event(_msg, _pid, _name, _component) do
     nil
+  end
+
+  defp wrap_msg(%Message.ChangeMessage{headers: %{operation: operation}} = msg, name, component)
+       when operation in [:insert, :update] do
+    wrap_event(component, event(operation: :insert, name: name, item: msg.value))
+  end
+
+  defp wrap_msg(%Message.ChangeMessage{headers: %{operation: :delete}} = msg, name, component) do
+    wrap_event(component, event(operation: :delete, name: name, item: msg.value))
   end
 
   defp wrap_event(nil, event) do

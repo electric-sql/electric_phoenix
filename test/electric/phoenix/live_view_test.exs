@@ -29,11 +29,9 @@ defmodule Electric.Phoenix.LiveViewTest do
 
       Client.Mock.async_response(client,
         status: 200,
-        headers: [
-          schema: %{id: %{type: "int8"}, name: %{type: "text"}},
-          last_offset: Client.Offset.first(),
-          shape_id: "users-1"
-        ],
+        schema: %{id: %{type: "int8"}, name: %{type: "text"}},
+        last_offset: Client.Offset.first(),
+        shape_id: "users-1",
         body: Client.Mock.transaction(users, operation: :insert)
       )
 
@@ -57,10 +55,8 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, _req} =
         Client.Mock.response(client,
           status: 200,
-          headers: [
-            last_offset: Client.Offset.new(3, 2),
-            shape_id: "users-1"
-          ],
+          last_offset: Client.Offset.new(3, 2),
+          shape_id: "users-1",
           body: Client.Mock.transaction(users2, lsn: 3, operation: :insert)
         )
 
@@ -83,10 +79,8 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, _req} =
         Client.Mock.response(client,
           status: 200,
-          headers: [
-            last_offset: Client.Offset.new(4, 2),
-            shape_id: "users-1"
-          ],
+          last_offset: Client.Offset.new(4, 2),
+          shape_id: "users-1",
           body: Client.Mock.transaction(users3, lsn: 4, operation: :delete)
         )
 
@@ -122,11 +116,9 @@ defmodule Electric.Phoenix.LiveViewTest do
 
       Client.Mock.async_response(client,
         status: 200,
-        headers: [
-          schema: %{id: %{type: "int8"}, name: %{type: "text"}},
-          last_offset: Client.Offset.first(),
-          shape_id: "users-1"
-        ],
+        schema: %{id: %{type: "int8"}, name: %{type: "text"}},
+        last_offset: Client.Offset.first(),
+        shape_id: "users-1",
         body: body
       )
 
@@ -140,17 +132,6 @@ defmodule Electric.Phoenix.LiveViewTest do
       for %{name: name} <- snapshot_users do
         assert html =~ name
       end
-
-      {:ok, _} =
-        Client.Mock.response(client,
-          status: 200,
-          headers: [
-            schema: %{id: %{type: "int8"}, name: %{type: "text"}},
-            last_offset: Client.Offset.first(),
-            shape_id: "users-1"
-          ],
-          body: user_updates
-        )
 
       assert_receive {:electric, _}
 
@@ -172,11 +153,9 @@ defmodule Electric.Phoenix.LiveViewTest do
 
       Client.Mock.async_response(client,
         status: 200,
-        headers: [
-          schema: %{id: %{type: "int8"}, name: %{type: "text"}},
-          last_offset: Client.Offset.first(),
-          shape_id: "users-1"
-        ],
+        schema: %{id: %{type: "int8"}, name: %{type: "text"}},
+        last_offset: Client.Offset.first(),
+        shape_id: "users-1",
         body: Client.Mock.transaction(users, operation: :insert)
       )
 
@@ -200,10 +179,8 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, _req} =
         Client.Mock.response(client,
           status: 200,
-          headers: [
-            last_offset: Client.Offset.new(3, 2),
-            shape_id: "users-1"
-          ],
+          last_offset: Client.Offset.new(3, 2),
+          shape_id: "users-1",
           body: Client.Mock.transaction(users2, lsn: 3, operation: :insert)
         )
 
