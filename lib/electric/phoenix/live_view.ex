@@ -6,18 +6,21 @@ defmodule Electric.Phoenix.LiveView do
   Record.defrecordp(:event, :"$electric_event", [:name, :operation, :item, opts: []])
   Record.defrecordp(:component_event, :"$electric_component_event", [:component, :event])
 
-  @type root_event() ::
-          record(:event,
-            name: :atom | String.t(),
-            operation: :atom,
-            item: Electric.Client.message()
-          )
-  @type component_event() ::
-          record(:component_event,
-            component: term(),
-            event: root_event()
-          )
-  @opaque event() :: root_event() | component_event()
+  @opaque root_event() ::
+            record(:event,
+              name: :atom | String.t(),
+              operation: :atom,
+              item: Electric.Client.message()
+            )
+  @opaque component_event() ::
+            record(:component_event,
+              component: term(),
+              event: root_event()
+            )
+  @opaque replication_event() :: root_event() | component_event()
+  @type state_event() :: :loaded | :live
+
+  @type event() :: replication_event() | state_event()
 
   @doc false
   def client! do
@@ -36,8 +39,6 @@ defmodule Electric.Phoenix.LiveView do
 
     if Phoenix.LiveView.connected?(socket) do
       client = Keyword.get_lazy(electric_opts, :client, &client!/0)
-      # we stream until the live point then passover to the stream update messages
-      # the raw stream needs to be mapped to pure ecto structs & &1.value
 
       Phoenix.LiveView.stream(
         socket,
@@ -51,6 +52,14 @@ defmodule Electric.Phoenix.LiveView do
   end
 
   @doc false
+  def stream_update(socket, :loaded, _opts) do
+    socket
+  end
+
+  def stream_update(socket, :live, _opts) do
+    socket
+  end
+
   def stream_update(socket, component_event(component: component, event: event), opts) do
     Phoenix.LiveView.send_update(component, electric: event(event, opts: opts))
     socket
@@ -126,6 +135,8 @@ defmodule Electric.Phoenix.LiveView do
     for event <- updates |> Enum.reverse() |> Enum.map(&wrap_msg(&1, name, component)),
         do: send(pid, {:electric, event})
 
+    send(pid, {:electric, :loaded})
+
     Task.start_link(fn ->
       client
       |> Electric.Client.stream(query, resume: resume, update_mode: :full)
@@ -136,6 +147,10 @@ defmodule Electric.Phoenix.LiveView do
 
   defp send_live_event(%Message.ChangeMessage{} = msg, pid, name, component) do
     send(pid, {:electric, wrap_msg(msg, name, component)})
+  end
+
+  defp send_live_event(%Message.ControlMessage{control: :up_to_date}, pid, _name, _component) do
+    send(pid, {:electric, :live})
   end
 
   defp send_live_event(_msg, _pid, _name, _component) do
