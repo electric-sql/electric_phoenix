@@ -23,11 +23,6 @@ defmodule Electric.Phoenix.LiveView do
   @type event() :: replication_event() | state_event()
 
   @doc false
-  def client! do
-    Electric.Client.new!(base_url: Application.fetch_env!(:electric_phoenix, :electric_url))
-  end
-
-  @doc false
   def stream(socket, name, query, opts \\ []) do
     {electric_opts, stream_opts} = Keyword.split(opts, [:client])
 
@@ -38,7 +33,7 @@ defmodule Electric.Phoenix.LiveView do
       end
 
     if Phoenix.LiveView.connected?(socket) do
-      client = Keyword.get_lazy(electric_opts, :client, &client!/0)
+      client = Keyword.get_lazy(electric_opts, :client, &Electric.Phoenix.client!/0)
 
       Phoenix.LiveView.stream(
         socket,
