@@ -98,6 +98,7 @@ defmodule Electric.Phoenix.Gateway.Plug do
   use Elixir.Plug.Builder, copy_opts_to_assign: :config
 
   alias Electric.Client.ShapeDefinition
+  alias Electric.Phoenix.Gateway
 
   plug :fetch_query_params
   plug :shape_definition
@@ -126,16 +127,11 @@ defmodule Electric.Phoenix.Gateway.Plug do
   def return_configuration(conn, _opts) do
     shape = conn.assigns.shape
     client = get_in(conn.assigns, [:config, :client]) |> build_client()
-
-    request = Electric.Client.request(client, shape: shape)
-    auth_headers = Electric.Client.authenticate_shape(client, shape)
-    shape_params = ShapeDefinition.params(shape)
-    url = Electric.Client.Fetch.Request.url(request, query: false)
-    resp = Map.merge(%{url: url, headers: auth_headers}, shape_params)
+    config = Gateway.configuration(client, shape)
 
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(resp))
+    |> send_resp(200, Jason.encode!(config))
   end
 
   @doc false
