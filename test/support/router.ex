@@ -25,4 +25,13 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
     live("/stream", StreamLive)
     live("/stream/with-component", StreamLiveWithComponent)
   end
+
+  scope "/" do
+    pipe_through([:browser])
+
+    get "/shape/items", Electric.Phoenix.Gateway.Plug,
+      shape: Electric.Client.shape!("items", where: "visible = true")
+
+    get "/shape/generic", Electric.Phoenix.Gateway.Plug, []
+  end
 end

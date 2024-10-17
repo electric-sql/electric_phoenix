@@ -5,8 +5,8 @@ defmodule Electric.Phoenix do
   applications](https://www.phoenixframework.org/).
 
   There are currently 2 integration modes: [`Phoenix.LiveView`
-  streams](#module-phoenix-liveview-streams) and [authentication
-  gateway](#module-authentication-gateway).
+  streams](#module-phoenix-liveview-streams) and [configuration
+  gateway](#module-configuration-gateway).
 
   ## Phoenix.LiveView Streams
 
@@ -14,9 +14,12 @@ defmodule Electric.Phoenix do
   [`Phoenix.LiveView.stream/4`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#stream/4)
   and provides a live updating collection of items.
 
-  ## Authentication Gateway
+  ## Configuration Gateway
 
-  TODO
+  Using `Electric.Phoenix.Gateway.Plug` you can create endpoints that
+  return configuration information for your Electric Typescript clients. See
+  [that module's documentation](`Electric.Phoenix.Gateway.Plug`) for
+  more information.
 
   ## Installation
 
@@ -30,7 +33,7 @@ defmodule Electric.Phoenix do
 
   ## Configuration
 
-  In your `config/config.exs` or `config/runtime.exs` you need to configure the
+  In your `config/config.exs` or `config/runtime.exs` you **must** configure the
   endpoint for the Electric streaming API:
 
       import Config

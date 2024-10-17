@@ -4,7 +4,7 @@ defmodule Electric.Phoenix.MixProject do
   def project do
     [
       app: :electric_phoenix,
-      version: "0.1.0",
+      version: "0.1.0-dev-2",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -33,6 +33,8 @@ defmodule Electric.Phoenix.MixProject do
       {:electric_client, "~> 0.1.0-dev-2"},
       {:nimble_options, "~> 1.1"},
       {:phoenix_live_view, "~> 0.20"},
+      {:plug, "~> 1.0"},
+      {:jason, "~> 1.0"},
       {:ecto_sql, "~> 3.10", optional: true},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:floki, "~> 0.36", only: [:test]}
