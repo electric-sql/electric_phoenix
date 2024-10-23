@@ -32,8 +32,6 @@ defmodule Electric.Phoenix.GatewayTest do
 
     import Ecto.Query
 
-    require Electric.Phoenix
-
     Code.ensure_loaded(Support.User)
 
     forward "/shapes/items",
@@ -48,7 +46,7 @@ defmodule Electric.Phoenix.GatewayTest do
 
     forward "/shapes/users-query",
       to: Gateway.Plug,
-      shape: from(u in Support.User, where: u.visible == true) |> dbg,
+      shape: from(u in Support.User, where: u.visible == true),
       client: MyEnv.client!()
 
     forward "/shapes/reasons",
@@ -56,34 +54,38 @@ defmodule Electric.Phoenix.GatewayTest do
       client: MyEnv.client!(),
       assigns: %{shape: Electric.Client.shape!("reasons", where: "valid = true")}
 
-    # forward "/shapes/users/:user_id",
-    #   to: Gateway.Plug,
-    #   shape:
-    #     Electric.Phoenix.shape!(
-    #       from(u in Support.User, where: u.visible == true),
-    #       "id = ?",
-    #       [:user_id]
-    #     ),
-    #   client: MyEnv.client!()
-
     forward "/shapes/users/:user_id/:age",
       to: Gateway.Plug,
       shape:
-        Electric.Phoenix.shape!(
+        Electric.Phoenix.Gateway.shape!(
           from(u in Support.User, where: u.visible == true),
           id: :user_id,
           age: [>: :age]
         ),
       client: MyEnv.client!()
 
-    # forward "/shapes/users/:user_id",
-    #   to: Gateway.Plug,
-    #   shape:
-    #     Electric.Phoenix.shape_thing!(
-    #       from(u in Support.User, where: u.visible == true),
-    #       Ecto.Query.dynamic([u], u.id == ^conn.params["user_id"])
-    #     ),
-    #   client: MyEnv.client!()
+    forward "/shapes/keyword/:user_id/:age",
+      to: Gateway.Plug,
+      shape: [
+        from(u in Support.User, where: u.visible == true),
+        id: :user_id,
+        age: [>: :age]
+      ],
+      client: MyEnv.client!()
+
+    forward "/shapes/atom/:visible",
+      to: Gateway.Plug,
+      shape: [Support.User, :visible],
+      client: MyEnv.client!()
+
+    get "/shapes/dynamic/:user_id/:age" do
+      shape =
+        Support.User
+        |> where(visible: ^conn.params["visible"], id: ^conn.params["user_id"])
+        |> where([u], u.age > ^conn.params["age"])
+
+      Electric.Phoenix.Gateway.send_configuration(conn, shape, MyEnv.client!())
+    end
   end
 
   describe "Plug" do
@@ -172,7 +174,6 @@ defmodule Electric.Phoenix.GatewayTest do
              } = Jason.decode!(body)
     end
 
-    @tag :wip
     test "allows for defining a shape using path parameters" do
       resp =
         conn(:get, "/shapes/users/b9d228a6-307e-442f-bee7-730a8b66ab5a/32", %{"visible" => true})
@@ -187,12 +188,60 @@ defmodule Electric.Phoenix.GatewayTest do
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
 
-      # TODO: defaults
-      # TODO: docs
       # TODO: tests for where clause gen
-      resp =
+    end
+
+    test "raises if parameter will not cast to column type" do
+      assert_raise Plug.Conn.WrapperError, fn ->
         conn(:get, "/shapes/users/--;%20delete%20from%20users/32", %{"visible" => true})
         |> MyEnv.TestRouter.call([])
+      end
+    end
+
+    test "allows for defining a dynamic shape with a keyword list" do
+      resp =
+        conn(:get, "/shapes/keyword/b9d228a6-307e-442f-bee7-730a8b66ab5a/32", %{"visible" => true})
+        |> MyEnv.TestRouter.call([])
+
+      assert {200, _headers, body} = sent_resp(resp)
+
+      assert %{
+               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "where" =>
+                 ~s[("visible" = TRUE) AND ("id" = 'b9d228a6-307e-442f-bee7-730a8b66ab5a') AND ("age" > 32)],
+               "headers" => %{"electric-mock-auth" => _hash}
+             } = Jason.decode!(body)
+    end
+
+    test "allows for defining a dynamic shape when column and parameter name are the same" do
+      resp =
+        conn(:get, "/shapes/atom/true", %{})
+        |> MyEnv.TestRouter.call([])
+
+      assert {200, _headers, body} = sent_resp(resp)
+
+      assert %{
+               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "where" => ~s[("visible" = TRUE)],
+               "headers" => %{"electric-mock-auth" => _hash}
+             } = Jason.decode!(body)
+    end
+
+    test "send_configuration/3" do
+      resp =
+        conn(:get, "/shapes/dynamic/b9d228a6-307e-442f-bee7-730a8b66ab5a/44", %{
+          "visible" => false
+        })
+        |> MyEnv.TestRouter.call([])
+
+      assert {200, _headers, body} = sent_resp(resp)
+
+      assert %{
+               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "where" =>
+                 ~s[(("visible" = FALSE) AND ("id" = 'b9d228a6-307e-442f-bee7-730a8b66ab5a')) AND ("age" > 44)],
+               "headers" => %{"electric-mock-auth" => _hash}
+             } = Jason.decode!(body)
     end
 
     test "works with Phoenix.Router.forward/3" do

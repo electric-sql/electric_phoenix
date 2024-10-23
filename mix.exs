@@ -30,8 +30,7 @@ defmodule Electric.Phoenix.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:electric_client, "~> 0.1.0-dev-2"},
-      {:electric_client, path: "../electric/packages/elixir-client"},
+      {:electric_client, "== 0.1.0-dev-11"},
       {:nimble_options, "~> 1.1"},
       {:phoenix_live_view, "~> 0.20"},
       {:plug, "~> 1.0"},

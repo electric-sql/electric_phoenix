@@ -108,12 +108,24 @@ defmodule Electric.Phoenix.Gateway.Plug do
   def init(opts) do
     shape_opts =
       case Keyword.get(opts, :shape) do
-        nil -> %{}
-        table_name when is_binary(table_name) -> %{shape: Electric.Client.shape!(table_name)}
-        %ShapeDefinition{} = shape -> %{shape: shape}
-        %Ecto.Query{} = query -> %{shape: Electric.Client.shape!(query)}
-        schema when is_atom(schema) -> %{shape: Electric.Client.shape!(schema)}
-        {_m, _f, _a} = mfa -> %{shape: {:dynamic, mfa}}
+        nil ->
+          %{}
+
+        table_name when is_binary(table_name) ->
+          %{shape: Electric.Client.shape!(table_name)}
+
+        %ShapeDefinition{} = shape ->
+          %{shape: shape}
+
+        %Ecto.Query{} = query ->
+          %{shape: Electric.Client.shape!(query)}
+
+        schema when is_atom(schema) ->
+          %{shape: Electric.Client.shape!(schema)}
+
+        [query | opts] when is_struct(query, Ecto.Query) or is_atom(query) ->
+          opts = Gateway.validate_dynamic_opts(opts)
+          %{shape: {:dynamic, query, opts}}
       end
 
     # Unless the client is defined at compile time, unlikely in prod
@@ -130,7 +142,7 @@ defmodule Electric.Phoenix.Gateway.Plug do
   def return_configuration(conn, _opts) do
     shape = conn.assigns.shape
     client = get_in(conn.assigns, [:config, :client]) |> build_client()
-    config = Gateway.configuration(client, shape)
+    config = Gateway.configuration(shape, client)
 
     conn
     |> put_resp_content_type("application/json")
@@ -145,19 +157,12 @@ defmodule Electric.Phoenix.Gateway.Plug do
     conn
   end
 
-  def shape_definition(
-        %{assigns: %{config: %{shape: %ShapeDefinition{} = shape}}} = conn,
-        _opts
-      ) do
+  def shape_definition(%{assigns: %{config: %{shape: %ShapeDefinition{} = shape}}} = conn, _opts) do
     assign(conn, :shape, shape)
   end
 
-  def shape_definition(
-        %{assigns: %{config: %{shape: {:dynamic, {m, f, a}}}}} = conn,
-        _opts
-      ) do
-    shape = apply(m, f, [conn | a])
-    assign(conn, :shape, shape)
+  def shape_definition(%{assigns: %{config: %{shape: {:dynamic, query, opts}}}} = conn, _opts) do
+    Gateway.dynamic_shape(conn, query, opts)
   end
 
   def shape_definition(%{query_params: %{"table" => table}} = conn, _opts) do
@@ -174,7 +179,6 @@ defmodule Electric.Phoenix.Gateway.Plug do
   end
 
   def shape_definition(conn, _opts) do
-    dbg(conn)
     halt_with_error(conn, "Missing required parameter \"table\"")
   end
 
