@@ -213,4 +213,8 @@ defmodule Electric.Phoenix do
   def stream_update(socket, event, opts \\ []) do
     Electric.Phoenix.LiveView.stream_update(socket, event, opts)
   end
+
+  def shape!(query, params) do
+    {Electric.Phoenix.Gateway, :dynamic_shape, [query, params]}
+  end
 end

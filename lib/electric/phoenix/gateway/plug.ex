@@ -111,6 +111,9 @@ defmodule Electric.Phoenix.Gateway.Plug do
         nil -> %{}
         table_name when is_binary(table_name) -> %{shape: Electric.Client.shape!(table_name)}
         %ShapeDefinition{} = shape -> %{shape: shape}
+        %Ecto.Query{} = query -> %{shape: Electric.Client.shape!(query)}
+        schema when is_atom(schema) -> %{shape: Electric.Client.shape!(schema)}
+        {_m, _f, _a} = mfa -> %{shape: {:dynamic, mfa}}
       end
 
     # Unless the client is defined at compile time, unlikely in prod
@@ -149,6 +152,14 @@ defmodule Electric.Phoenix.Gateway.Plug do
     assign(conn, :shape, shape)
   end
 
+  def shape_definition(
+        %{assigns: %{config: %{shape: {:dynamic, {m, f, a}}}}} = conn,
+        _opts
+      ) do
+    shape = apply(m, f, [conn | a])
+    assign(conn, :shape, shape)
+  end
+
   def shape_definition(%{query_params: %{"table" => table}} = conn, _opts) do
     case ShapeDefinition.new(table,
            where: conn.params["where"],
@@ -163,6 +174,7 @@ defmodule Electric.Phoenix.Gateway.Plug do
   end
 
   def shape_definition(conn, _opts) do
+    dbg(conn)
     halt_with_error(conn, "Missing required parameter \"table\"")
   end
 
