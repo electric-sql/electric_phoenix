@@ -22,9 +22,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, client} = Client.Mock.new()
 
       users = [
-        %{id: 1, name: "User 1"},
-        %{id: 2, name: "User 2"},
-        %{id: 3, name: "User 3"}
+        %{id: "6dfea52e-1096-4b62-aafd-838ddd49477d", name: "User 1"},
+        %{id: "9fc8f0a7-42e9-4473-9981-43a1904cd88a", name: "User 2"},
+        %{id: "4252d858-8764-4069-bb8c-e670f899b80a", name: "User 3"}
       ]
 
       Client.Mock.async_response(client,
@@ -47,9 +47,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       end
 
       users2 = [
-        %{id: 4, name: "User 4"},
-        %{id: 5, name: "User 5"},
-        %{id: 6, name: "User 6"}
+        %{id: "53183977-bd54-4171-9697-51e13b0ff7ca", name: "User 4"},
+        %{id: "92d42f40-cf16-4d51-a663-171d9fa1a21a", name: "User 5"},
+        %{id: "04e15019-010e-4aa1-8eb0-33132099d05b", name: "User 6"}
       ]
 
       {:ok, _req} =
@@ -71,9 +71,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       end
 
       users3 = [
-        %{id: 2, name: "User 2"},
-        %{id: 4, name: "User 4"},
-        %{id: 6, name: "User 6"}
+        %{id: "9fc8f0a7-42e9-4473-9981-43a1904cd88a", name: "User 2"},
+        %{id: "53183977-bd54-4171-9697-51e13b0ff7ca", name: "User 4"},
+        %{id: "04e15019-010e-4aa1-8eb0-33132099d05b", name: "User 6"}
       ]
 
       {:ok, _req} =
@@ -99,9 +99,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, client} = Client.Mock.new()
 
       snapshot_users = [
-        %{id: 1, name: "User 1"},
-        %{id: 2, name: "User 2"},
-        %{id: 3, name: "User 3"}
+        %{id: "6dfea52e-1096-4b62-aafd-838ddd49477d", name: "User 1"},
+        %{id: "9fc8f0a7-42e9-4473-9981-43a1904cd88a", name: "User 2"},
+        %{id: "4252d858-8764-4069-bb8c-e670f899b80a", name: "User 3"}
       ]
 
       update_users =
@@ -146,9 +146,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       {:ok, client} = Client.Mock.new()
 
       users = [
-        %{id: 1, name: "User 1"},
-        %{id: 2, name: "User 2"},
-        %{id: 3, name: "User 3"}
+        %{id: "6dfea52e-1096-4b62-aafd-838ddd49477d", name: "User 1"},
+        %{id: "9fc8f0a7-42e9-4473-9981-43a1904cd88a", name: "User 2"},
+        %{id: "4252d858-8764-4069-bb8c-e670f899b80a", name: "User 3"}
       ]
 
       Client.Mock.async_response(client,
@@ -171,9 +171,9 @@ defmodule Electric.Phoenix.LiveViewTest do
       end
 
       users2 = [
-        %{id: 4, name: "User 4"},
-        %{id: 5, name: "User 5"},
-        %{id: 6, name: "User 6"}
+        %{id: "53183977-bd54-4171-9697-51e13b0ff7ca", name: "User 4"},
+        %{id: "92d42f40-cf16-4d51-a663-171d9fa1a21a", name: "User 5"},
+        %{id: "04e15019-010e-4aa1-8eb0-33132099d05b", name: "User 6"}
       ]
 
       {:ok, _req} =
