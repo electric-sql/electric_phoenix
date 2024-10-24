@@ -213,4 +213,6 @@ defmodule Electric.Phoenix do
   def stream_update(socket, event, opts \\ []) do
     Electric.Phoenix.LiveView.stream_update(socket, event, opts)
   end
+
+  defdelegate electric_client_configuration(assigns), to: Electric.Phoenix.Component
 end
