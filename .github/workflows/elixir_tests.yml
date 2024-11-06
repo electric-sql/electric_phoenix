@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build and test with PostgreSQL 14
+  test:
+    name: mix test
     runs-on: ubuntu-latest
     env:
       MIX_ENV: test
@@ -51,6 +51,9 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
 
+      - name: Compiles without warnings
+        run: mix compile --force --all-warnings --warnings-as-errors
+
       - name: Save compiled code
         uses: actions/cache/save@v4
         with:
@@ -59,14 +62,14 @@ jobs:
             !_build/*/lib/electric_phoenix
           key: ${{ runner.os }}-build-test-${{ hashFiles('mix.lock') }}
 
-      - name: Compiles without warnings
-        run: mix compile --force --all-warnings --warnings-as-errors
-
       - name: Run tests
         run: mix test --trace
+
   formatting:
     name: Check formatting
     runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
