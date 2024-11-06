@@ -39,8 +39,10 @@ defmodule Electric.Phoenix do
       import Config
 
       config :electric_phoenix,
-        electric_url: System.get_env("ELECTRIC_URL", "http://localhost:3000")
-
+        # required
+        electric_url: System.get_env("ELECTRIC_URL", "http://localhost:3000"),
+        # optional
+        database_id: System.get_env("ELECTRIC_DATABASE_ID", nil)
   """
 
   @options NimbleOptions.new!(client: [type: {:struct, Electric.Client}])
@@ -57,7 +59,10 @@ defmodule Electric.Phoenix do
   Create a new `Electric.Client` instance based on the application config.
   """
   def client! do
-    Electric.Client.new!(base_url: Application.fetch_env!(:electric_phoenix, :electric_url))
+    Electric.Client.new!(
+      base_url: Application.fetch_env!(:electric_phoenix, :electric_url),
+      database_id: Application.get_env(:electric_phoenix, :database_id)
+    )
   end
 
   @doc ~S"""
