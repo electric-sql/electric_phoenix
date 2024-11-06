@@ -31,7 +31,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         status: 200,
         schema: %{id: %{type: "int8"}, name: %{type: "text"}},
         last_offset: Client.Offset.first(),
-        shape_id: "users-1",
+        shape_handle: "users-1",
         body: Client.Mock.transaction(users, operation: :insert)
       )
 
@@ -56,7 +56,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         Client.Mock.response(client,
           status: 200,
           last_offset: Client.Offset.new(3, 2),
-          shape_id: "users-1",
+          shape_handle: "users-1",
           body: Client.Mock.transaction(users2, lsn: 3, operation: :insert)
         )
 
@@ -80,7 +80,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         Client.Mock.response(client,
           status: 200,
           last_offset: Client.Offset.new(4, 2),
-          shape_id: "users-1",
+          shape_handle: "users-1",
           body: Client.Mock.transaction(users3, lsn: 4, operation: :delete)
         )
 
@@ -118,7 +118,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         status: 200,
         schema: %{id: %{type: "int8"}, name: %{type: "text"}},
         last_offset: Client.Offset.first(),
-        shape_id: "users-1",
+        shape_handle: "users-1",
         body: body
       )
 
@@ -155,7 +155,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         status: 200,
         schema: %{id: %{type: "int8"}, name: %{type: "text"}},
         last_offset: Client.Offset.first(),
-        shape_id: "users-1",
+        shape_handle: "users-1",
         body: Client.Mock.transaction(users, operation: :insert)
       )
 
@@ -180,7 +180,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         Client.Mock.response(client,
           status: 200,
           last_offset: Client.Offset.new(3, 2),
-          shape_id: "users-1",
+          shape_handle: "users-1",
           body: Client.Mock.transaction(users2, lsn: 3, operation: :insert)
         )
 

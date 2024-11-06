@@ -32,8 +32,9 @@ defmodule Electric.Phoenix.ComponentTest do
       )
 
     assert html =~ ~r/window\.visible_user_config = \{/
-    assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape/users"]
+    assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape"]
     assert html =~ ~r|"electric-mock-auth":"[a-z0-9]+"|
+    assert html =~ ~r|"table":"users"|
     assert html =~ ~r|"where":"\(\\"visible\\" = TRUE\)"|
   end
 
@@ -52,8 +53,9 @@ defmodule Electric.Phoenix.ComponentTest do
       """)
 
     assert html =~ ~r/React\.createElement.+client_config: \{/
-    assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape/users"]
+    assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape"]
     assert html =~ ~r|"electric-mock-auth":"[a-z0-9]+"|
+    assert html =~ ~r|"table":"users"|
     assert html =~ ~r|"where":"\(\\"visible\\" = TRUE\)"|
   end
 end

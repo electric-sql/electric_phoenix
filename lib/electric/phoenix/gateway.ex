@@ -25,7 +25,7 @@ defmodule Electric.Phoenix.Gateway do
   def configuration(%Client.ShapeDefinition{} = shape, %Client{} = client) do
     request = Client.request(client, shape: shape)
     auth_headers = Client.authenticate_shape(client, shape)
-    shape_params = ShapeDefinition.params(shape)
+    shape_params = ShapeDefinition.params(shape, format: :json)
     url = Fetch.Request.url(request, query: false)
 
     Map.merge(%{url: url, headers: auth_headers}, shape_params)

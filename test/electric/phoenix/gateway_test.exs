@@ -39,6 +39,11 @@ defmodule Electric.Phoenix.GatewayTest do
       shape: Electric.Client.shape!("items"),
       client: MyEnv.client!()
 
+    forward "/shapes/items-columns",
+      to: Gateway.Plug,
+      shape: Electric.Client.shape!("items", columns: ["id", "value"]),
+      client: MyEnv.client!()
+
     forward "/shapes/users-ecto",
       to: Gateway.Plug,
       shape: Support.User,
@@ -97,7 +102,8 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/things",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "things",
                "headers" => %{"electric-mock-auth" => hash}
              } = Jason.decode!(body)
 
@@ -112,7 +118,8 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/things",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "things",
                "where" => "colour = 'blue'",
                "headers" => %{"electric-mock-auth" => hash}
              } = Jason.decode!(body)
@@ -128,7 +135,23 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/items",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "items",
+               "headers" => %{"electric-mock-auth" => _hash}
+             } = Jason.decode!(body)
+    end
+
+    test "allows for preconfiguring the shape with columns" do
+      resp =
+        conn(:get, "/shapes/items-columns", %{})
+        |> MyEnv.TestRouter.call([])
+
+      assert {200, _headers, body} = sent_resp(resp)
+
+      assert %{
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "items",
+               "columns" => ["id", "value"],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
     end
@@ -141,7 +164,8 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/reasons",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "reasons",
                "where" => "valid = true",
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
@@ -155,7 +179,9 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
+               "columns" => ["id", "name", "visible", "age"],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
     end
@@ -168,8 +194,10 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
                "where" => ~s[("visible" = TRUE)],
+               "columns" => ["id", "name", "visible", "age"],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
     end
@@ -182,9 +210,11 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
                "where" =>
                  ~s[("visible" = TRUE) AND ("id" = 'b9d228a6-307e-442f-bee7-730a8b66ab5a') AND ("age" > 32)],
+               "columns" => ["id", "name", "visible", "age"],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
 
@@ -206,7 +236,9 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
+               "columns" => ["id", "name", "visible", "age"],
                "where" =>
                  ~s[("visible" = TRUE) AND ("id" = 'b9d228a6-307e-442f-bee7-730a8b66ab5a') AND ("age" > 32)],
                "headers" => %{"electric-mock-auth" => _hash}
@@ -221,7 +253,9 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
+               "columns" => ["id", "name", "visible", "age"],
                "where" => ~s[("visible" = TRUE)],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
@@ -237,9 +271,11 @@ defmodule Electric.Phoenix.GatewayTest do
       assert {200, _headers, body} = sent_resp(resp)
 
       assert %{
-               "url" => "https://cloud.electric-sql.com/v1/shape/users",
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
                "where" =>
                  ~s[(("visible" = FALSE) AND ("id" = 'b9d228a6-307e-442f-bee7-730a8b66ab5a')) AND ("age" > 44)],
+               "columns" => ["id", "name", "visible", "age"],
                "headers" => %{"electric-mock-auth" => _hash}
              } = Jason.decode!(body)
     end
@@ -250,9 +286,10 @@ defmodule Electric.Phoenix.GatewayTest do
         |> Phoenix.ConnTest.get("/shape/items")
 
       assert Phoenix.ConnTest.json_response(resp, 200) == %{
-               "headers" => %{},
-               "url" => "http://localhost:3000/v1/shape/items",
-               "where" => "visible = true"
+               "url" => "http://localhost:3000/v1/shape",
+               "table" => "items",
+               "where" => "visible = true",
+               "headers" => %{}
              }
     end
 
@@ -265,9 +302,10 @@ defmodule Electric.Phoenix.GatewayTest do
         })
 
       assert Phoenix.ConnTest.json_response(resp, 200) == %{
-               "headers" => %{},
-               "url" => "http://localhost:3000/v1/shape/clothes",
-               "where" => "colour = 'red'"
+               "url" => "http://localhost:3000/v1/shape",
+               "table" => "clothes",
+               "where" => "colour = 'red'",
+               "headers" => %{}
              }
     end
   end
