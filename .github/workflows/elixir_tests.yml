@@ -27,7 +27,7 @@ jobs:
           version-file: ".tool-versions"
 
       - name: Restore dependencies cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v4
         with:
           path: deps
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
@@ -43,6 +43,13 @@ jobs:
 
       - name: Install dependencies
         run: mix deps.get && mix deps.compile
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
 
       - name: Save compiled code
         uses: actions/cache/save@v4
@@ -66,11 +73,11 @@ jobs:
         with:
           version-type: strict
           version-file: ".tool-versions"
-      - name: Cache dependencies
-        id: cache-deps
-        uses: actions/cache@v4
+      - name: Restore dependencies cache
+        uses: actions/cache/restore@v4
         with:
           path: deps
-          key: ${{ runner.os }}-mixdeps-${{ hashFiles('mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
       - run: mix deps.get
       - run: mix format --check-formatted
