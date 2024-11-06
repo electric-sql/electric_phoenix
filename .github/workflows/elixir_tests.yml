@@ -56,7 +56,7 @@ jobs:
         run: mix compile --force --all-warnings --warnings-as-errors
 
       - name: Run tests
-        run: mix test
+        run: mix test --trace
   formatting:
     name: Check formatting
     runs-on: ubuntu-latest
