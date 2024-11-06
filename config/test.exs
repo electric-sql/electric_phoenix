@@ -1,6 +1,6 @@
 import Config
 
-config :logger, level: :warning
+config :logger, level: :critical
 
 config :electric_phoenix, Electric.Phoenix.LiveViewTest.Endpoint, []
 
