@@ -76,7 +76,7 @@ defmodule Electric.Phoenix.LiveView do
     pid = self()
 
     client
-    |> Electric.Client.stream(query, oneshot: true, update_mode: :full)
+    |> Electric.Client.stream(query, oneshot: true, replica: :full)
     |> Stream.transform(
       fn -> {[], nil} end,
       &live_stream_message(&1, &2, client, name, query, pid, component),
@@ -134,7 +134,7 @@ defmodule Electric.Phoenix.LiveView do
 
     Task.start_link(fn ->
       client
-      |> Electric.Client.stream(query, resume: resume, update_mode: :full)
+      |> Electric.Client.stream(query, resume: resume, replica: :full)
       |> Stream.each(&send_live_event(&1, pid, name, component))
       |> Stream.run()
     end)
