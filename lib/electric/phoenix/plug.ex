@@ -152,11 +152,7 @@ defmodule Electric.Phoenix.Plug do
   defp return_configuration(conn, _opts) do
     shape = conn.assigns.shape
     client = get_in(conn.assigns, [:config, :client]) |> build_client()
-    config = Gateway.configuration(shape, client)
-
-    conn
-    |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(config))
+    send_configuration(conn, shape, client)
   end
 
   defp shape_definition(conn, opts)
@@ -337,9 +333,7 @@ defmodule Electric.Phoenix.Plug do
   """
   @spec send_configuration(Plug.Conn.t(), Electric.Phoenix.shape_definition(), Client.t()) ::
           Plug.Conn.t()
-  def send_configuration(conn, shape_or_queryable, client \\ Electric.Phoenix.client!())
-
-  def send_configuration(conn, shape_or_queryable, client) do
+  def send_configuration(conn, shape_or_queryable, client \\ Electric.Phoenix.client!()) do
     configuration = Gateway.configuration(shape_or_queryable, client)
 
     conn
