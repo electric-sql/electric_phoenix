@@ -20,7 +20,7 @@ defmodule Electric.Phoenix.LiveView do
               event: root_event()
             )
   @opaque replication_event() :: root_event() | component_event()
-  @type state_event() :: :loaded | :live
+  @type state_event() :: {atom(), :loaded} | {atom(), :live}
 
   @type event() :: replication_event() | state_event()
 
@@ -71,21 +71,21 @@ defmodule Electric.Phoenix.LiveView do
   to the `electric_stream_update/3` function, but there are two events that are meant to
   be handled directly in the LiveView component.
 
-  - `{:electric, :loaded}` - sent when the Electric event stream has passed
+  - `{:electric, {stream_name, :loaded}}` - sent when the Electric event stream has passed
   from initial state to update mode.
 
-  - `{:electric, :live}` - sent when the Electric stream is in `live` mode,
+  - `{:electric, {stream_name, :live}}` - sent when the Electric stream is in `live` mode,
   that is the initial state has loaded and the client is waiting for updates
   from the db.
 
-  The `{:electric, :live}` event is useful to show the stream component after
+  The `{:electric, {stream_name, :live}}` event is useful to show the stream component after
   the initial sync. Because of the streaming nature of Electric Shapes, the
   intitial sync can cause flickering as items are added, removed and updated.
 
   E.g.:
 
       # in the LiveView component
-      def handle_info(`{:electric, :live}`, socket) do
+      def handle_info(`{:electric, {_name, :live}}`, socket) do
         {:noreply, assign(socket, :show_stream, true)}
       end
 
@@ -141,9 +141,9 @@ defmodule Electric.Phoenix.LiveView do
           \"""
         end
 
-        # Equivalent to the `handle_info({:electric, :live}, socket)` callback
+        # Equivalent to the `handle_info({:electric, {stream_name, :live}}, socket)` callback
         # in the parent LiveView.
-        def update(%{electric: :live}, socket) do
+        def update(%{electric: {_stream_name, :live}}, socket) do
           {:ok, socket}
         end
 
@@ -200,16 +200,26 @@ defmodule Electric.Phoenix.LiveView do
           Phoenix.LiveView.Socket.t()
   def electric_stream_update(socket, event, opts \\ [])
 
-  def electric_stream_update(socket, :loaded, _opts) do
-    socket
-  end
-
-  def electric_stream_update(socket, :live, _opts) do
+  def electric_stream_update(
+        socket,
+        component_event(component: component, event: {_name, status} = event),
+        _opts
+      )
+      when status in [:live, :loaded] do
+    Phoenix.LiveView.send_update(component, electric: event)
     socket
   end
 
   def electric_stream_update(socket, component_event(component: component, event: event), opts) do
     Phoenix.LiveView.send_update(component, electric: event(event, opts: opts))
+    socket
+  end
+
+  def electric_stream_update(socket, {_name, :loaded}, _opts) do
+    socket
+  end
+
+  def electric_stream_update(socket, {_name, :live}, _opts) do
     socket
   end
 
@@ -283,7 +293,7 @@ defmodule Electric.Phoenix.LiveView do
     for event <- updates |> Enum.reverse() |> Enum.map(&wrap_msg(&1, name, component)),
         do: send(pid, {:electric, event})
 
-    send(pid, {:electric, :loaded})
+    send(pid, {:electric, wrap_event(component, {name, :loaded})})
 
     Task.start_link(fn ->
       client
@@ -297,8 +307,8 @@ defmodule Electric.Phoenix.LiveView do
     send(pid, {:electric, wrap_msg(msg, name, component)})
   end
 
-  defp send_live_event(%Message.ControlMessage{control: :up_to_date}, pid, _name, _component) do
-    send(pid, {:electric, :live})
+  defp send_live_event(%Message.ControlMessage{control: :up_to_date}, pid, name, component) do
+    send(pid, {:electric, wrap_event(component, {name, :live})})
   end
 
   defp send_live_event(_msg, _pid, _name, _component) do

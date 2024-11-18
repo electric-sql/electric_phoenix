@@ -188,6 +188,9 @@ defmodule Electric.Phoenix.LiveViewTest do
         assert_receive {:electric, _}
       end
 
+      # assert that the component received the :live status event
+      assert_receive {:electric, :users, :live}
+
       html = render(lv)
 
       for %{name: name} <- users ++ users2 do

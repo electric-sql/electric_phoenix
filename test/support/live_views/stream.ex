@@ -192,6 +192,11 @@ defmodule Electric.Phoenix.LiveViewTest.StreamLiveComponent do
     {:ok, socket}
   end
 
+  def update(%{electric: {:users, :live}}, socket) do
+    send(socket.assigns.test_pid, {:electric, :users, :live})
+    {:ok, socket}
+  end
+
   def update(%{electric: event}, socket) do
     send(socket.assigns.test_pid, {:electric, event})
     {:ok, Electric.Phoenix.LiveView.electric_stream_update(socket, event)}
