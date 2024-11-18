@@ -48,7 +48,7 @@ defmodule Electric.Phoenix.Gateway do
   current request.
 
       forward "/shapes/tasks/:project_id",
-        to: Electric.Gateway.Plug,
+        to: Electric.Plug,
         shape: Electric.Phoenix.Gateway.shape!(
           from(t in Task, where: t.active == true),
           project_id: :project_id
@@ -92,7 +92,7 @@ defmodule Electric.Phoenix.Gateway do
   pass a list of `[query | params]` to do the same thing:
 
       forward "/shapes/tasks/:project_id",
-        to: Electric.Gateway.Plug,
+        to: Electric.Plug,
         shape: [
           from(t in Task, where: t.active == true),
           project_id: :project_id

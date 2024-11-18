@@ -1,4 +1,4 @@
-defmodule Electric.Phoenix.Gateway.Plug do
+defmodule Electric.Phoenix.Plug do
   @moduledoc """
   Provides an configuration endpoint for use in your Phoenix applications.
 

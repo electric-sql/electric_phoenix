@@ -1,8 +1,6 @@
-defmodule Electric.Phoenix.GatewayTest do
+defmodule Electric.Phoenix.PlugTest do
   use ExUnit.Case, async: true
   use Plug.Test
-
-  alias Electric.Phoenix.Gateway
 
   require Phoenix.ConnTest
 
@@ -35,32 +33,32 @@ defmodule Electric.Phoenix.GatewayTest do
     Code.ensure_loaded(Support.User)
 
     forward "/shapes/items",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: Electric.Client.shape!("items"),
       client: MyEnv.client!()
 
     forward "/shapes/items-columns",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: Electric.Client.shape!("items", columns: ["id", "value"]),
       client: MyEnv.client!()
 
     forward "/shapes/users-ecto",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: Support.User,
       client: MyEnv.client!()
 
     forward "/shapes/users-query",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: from(u in Support.User, where: u.visible == true),
       client: MyEnv.client!()
 
     forward "/shapes/reasons",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       client: MyEnv.client!(),
       assigns: %{shape: Electric.Client.shape!("reasons", where: "valid = true")}
 
     forward "/shapes/users/:user_id/:age",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape:
         Electric.Phoenix.Gateway.shape!(
           from(u in Support.User, where: u.visible == true),
@@ -70,7 +68,7 @@ defmodule Electric.Phoenix.GatewayTest do
       client: MyEnv.client!()
 
     forward "/shapes/keyword/:user_id/:age",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: [
         from(u in Support.User, where: u.visible == true),
         id: :user_id,
@@ -79,7 +77,7 @@ defmodule Electric.Phoenix.GatewayTest do
       client: MyEnv.client!()
 
     forward "/shapes/atom/:visible",
-      to: Gateway.Plug,
+      to: Electric.Phoenix.Plug,
       shape: [Support.User, :visible],
       client: MyEnv.client!()
 
@@ -97,7 +95,7 @@ defmodule Electric.Phoenix.GatewayTest do
     test "returns a url and query parameters" do
       resp =
         conn(:get, "/things", %{"table" => "things"})
-        |> Gateway.Plug.call(%{client: MyEnv.client!()})
+        |> Electric.Phoenix.Plug.call(%{client: MyEnv.client!()})
 
       assert {200, _headers, body} = sent_resp(resp)
 
@@ -113,7 +111,7 @@ defmodule Electric.Phoenix.GatewayTest do
     test "includes where clauses in returned parameters" do
       resp =
         conn(:get, "/things", %{"table" => "things", "where" => "colour = 'blue'"})
-        |> Gateway.Plug.call(%{client: MyEnv.client!()})
+        |> Electric.Phoenix.Plug.call(%{client: MyEnv.client!()})
 
       assert {200, _headers, body} = sent_resp(resp)
 
