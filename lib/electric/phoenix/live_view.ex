@@ -70,8 +70,9 @@ defmodule Electric.Phoenix.LiveView do
   ## Lifecycle Events
 
   Most `{:electric, event}` messages are opaque and should be passed directly
-  to the `electric_stream_update/3` function, but there are two events that are meant to
-  be handled directly in the LiveView component.
+  to the `electric_stream_update/3` function, but there are two events that are
+  outside Electric's replication protocol and designed to be useful in the
+  LiveView component.
 
   - `{:electric, {stream_name, :loaded}}` - sent when the Electric event stream has passed
     from initial state to update mode.
@@ -99,7 +100,15 @@ defmodule Electric.Phoenix.LiveView do
     up-to-date with the database and is long-polling for new events from the
     Electric server.
 
+  If your app doesn't need this extra information, then you can ignore them and
+  just have a catch-all callback:
 
+      def handle_info({:electric, event}, socket) do
+        {:noreply, Electric.Phoenix.LiveView.electric_stream_update(socket, event)}
+      end
+
+  `Electric.Phoenix.LiveView.electric_stream_update` will just ignore the
+  lifecycle events.
 
   ## Sub-components
 
