@@ -1,11 +1,14 @@
 defmodule Electric.Phoenix.LiveViewTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.ConnTest
-  import Phoenix.LiveViewTest
-
   alias Electric.Phoenix.LiveViewTest.Endpoint
   alias Electric.Client
+
+  import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
+  import Phoenix.Component
+
+  require Ecto.Query
 
   @endpoint Endpoint
 
@@ -17,7 +20,7 @@ defmodule Electric.Phoenix.LiveViewTest do
 
   import Plug.Conn
 
-  describe "stream/3" do
+  describe "electric_stream/3" do
     test "simple live view with only a snapshot", %{conn: conn} do
       {:ok, client} = Client.Mock.new()
 
@@ -196,6 +199,59 @@ defmodule Electric.Phoenix.LiveViewTest do
       for %{name: name} <- users ++ users2 do
         assert html =~ name
       end
+    end
+  end
+
+  describe "electric_client_configuration/1" do
+    def client!(opts \\ []) do
+      Electric.Client.new!(
+        base_url: "https://cloud.electric-sql.com",
+        authenticator:
+          Keyword.get(
+            opts,
+            :authenticator,
+            {Electric.Client.Authenticator.MockAuthenticator, salt: "my-salt"}
+          )
+      )
+    end
+
+    test "generates a script tag with the right configuration" do
+      shape = Ecto.Query.where(Support.User, visible: true)
+
+      html =
+        Phoenix.LiveViewTest.render_component(
+          &Electric.Phoenix.LiveView.electric_client_configuration/1,
+          shape: shape,
+          client: client!(),
+          key: "visible_user_config"
+        )
+
+      assert html =~ ~r/window\.visible_user_config = \{/
+      assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape"]
+      assert html =~ ~r|"electric-mock-auth":"[a-z0-9]+"|
+      assert html =~ ~r|"table":"users"|
+      assert html =~ ~r|"where":"\(\\"visible\\" = TRUE\)"|
+    end
+
+    test "allows for overriding how the configuration is used" do
+      assigns = %{}
+
+      html =
+        Phoenix.LiveViewTest.rendered_to_string(~H"""
+          <div>
+            <Electric.Phoenix.LiveView.electric_client_configuration client={client!()} shape={Ecto.Query.where(Support.User, visible: true)}>
+              <:script :let={configuration}>
+                root.render(React.createElement(MyApp, { client_config: <%= configuration %> }, null))
+              </:script>
+            </Electric.Phoenix.LiveView.electric_client_configuration> 
+          </div>
+        """)
+
+      assert html =~ ~r/React\.createElement.+client_config: \{/
+      assert html =~ ~r["url":"https://cloud.electric-sql.com/v1/shape"]
+      assert html =~ ~r|"electric-mock-auth":"[a-z0-9]+"|
+      assert html =~ ~r|"table":"users"|
+      assert html =~ ~r|"where":"\(\\"visible\\" = TRUE\)"|
     end
   end
 end
