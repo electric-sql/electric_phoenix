@@ -100,6 +100,17 @@ defmodule Electric.Phoenix.Plug do
   alias Electric.Client.ShapeDefinition
   alias Electric.Phoenix.Gateway
 
+  require Ecto.Query
+
+  @valid_ops [:==, :!=, :>, :<, :>=, :<=]
+
+  @type table_column :: atom()
+  @type param_name :: atom()
+  @type op :: :== | :!= | :> | :< | :>= | :<=
+  @type conn_param_spec :: param_name() | [{op(), param_name()}]
+  @type dynamic_shape_param :: {table_column(), conn_param_spec()} | table_column()
+  @type dynamic_shape_params :: [dynamic_shape_param()]
+
   plug :fetch_query_params
   plug :shape_definition
   plug :return_configuration
@@ -124,7 +135,7 @@ defmodule Electric.Phoenix.Plug do
           %{shape: Electric.Client.shape!(schema)}
 
         [query | opts] when is_struct(query, Ecto.Query) or is_atom(query) ->
-          opts = Gateway.validate_dynamic_opts(opts)
+          opts = validate_dynamic_opts(opts)
           %{shape: {:dynamic, query, opts}}
       end
 
@@ -138,8 +149,7 @@ defmodule Electric.Phoenix.Plug do
     )
   end
 
-  @doc false
-  def return_configuration(conn, _opts) do
+  defp return_configuration(conn, _opts) do
     shape = conn.assigns.shape
     client = get_in(conn.assigns, [:config, :client]) |> build_client()
     config = Gateway.configuration(shape, client)
@@ -149,23 +159,22 @@ defmodule Electric.Phoenix.Plug do
     |> send_resp(200, Jason.encode!(config))
   end
 
-  @doc false
-  def shape_definition(conn, opts)
+  defp shape_definition(conn, opts)
 
   # the app has configured a fixed shape for the endpoint
-  def shape_definition(%{assigns: %{shape: %ShapeDefinition{}}} = conn, _opts) do
+  defp shape_definition(%{assigns: %{shape: %ShapeDefinition{}}} = conn, _opts) do
     conn
   end
 
-  def shape_definition(%{assigns: %{config: %{shape: %ShapeDefinition{} = shape}}} = conn, _opts) do
+  defp shape_definition(%{assigns: %{config: %{shape: %ShapeDefinition{} = shape}}} = conn, _opts) do
     assign(conn, :shape, shape)
   end
 
-  def shape_definition(%{assigns: %{config: %{shape: {:dynamic, query, opts}}}} = conn, _opts) do
-    Gateway.dynamic_shape(conn, query, opts)
+  defp shape_definition(%{assigns: %{config: %{shape: {:dynamic, query, opts}}}} = conn, _opts) do
+    dynamic_shape(conn, query, opts)
   end
 
-  def shape_definition(%{query_params: %{"table" => table}} = conn, _opts) do
+  defp shape_definition(%{query_params: %{"table" => table}} = conn, _opts) do
     case ShapeDefinition.new(table,
            where: conn.params["where"],
            namespace: conn.params["namespace"]
@@ -178,7 +187,7 @@ defmodule Electric.Phoenix.Plug do
     end
   end
 
-  def shape_definition(conn, _opts) do
+  defp shape_definition(conn, _opts) do
     halt_with_error(conn, "Missing required parameter \"table\"")
   end
 
@@ -195,5 +204,146 @@ defmodule Electric.Phoenix.Plug do
     |> put_resp_content_type("application/json")
     |> send_resp(status, Jason.encode!(%{error: reason}))
     |> halt()
+  end
+
+  defp validate_dynamic_opts(opts) do
+    Enum.map(opts, fn
+      {column, param} when is_atom(param) ->
+        {column, param}
+
+      {column, [{op, param}]} when is_atom(param) and op in @valid_ops ->
+        {column, {op, param}}
+
+      column when is_atom(column) ->
+        {column, column}
+    end)
+  end
+
+  @doc """
+  Defines a shape based on a root `Ecto` query plus some filters based on the
+  current request.
+
+      forward "/shapes/tasks/:project_id",
+        to: Electric.Plug,
+        shape: Electric.Phoenix.Plug.shape!(
+          from(t in Task, where: t.active == true),
+          project_id: :project_id
+        )
+
+  The `params` describe the way to build the `where` clause on the shape from
+  the request parameters.
+
+  For example, `[id: :user_id]` means that the `id` column on the table should
+  match the value of the `user_id` parameter, equivalent to:
+
+      from(
+        t in Table,
+        where: t.id == ^conn.params["user_id"]
+      )
+
+  If both the table column and the request parameter have the same name, then
+  you can just pass the name, so:
+
+      Electric.Phoenix.Plug.shape!(Table, [:visible])
+
+  is equivalent to:
+
+      from(
+        t in Table,
+        where: t.visible == ^conn.params["visible"]
+      )
+
+  If you need to match on something other than `==` then you can pass the operator in the params:
+
+      Electric.Phoenix.Plug.shape!(Table, size: [>=: :size])
+
+  is equivalent to:
+
+      from(
+        t in Table,
+        where: t.size >= ^conn.params["size"]
+      )
+
+  Instead of calling `shape!/2` directly in your route definition, you can just
+  pass a list of `[query | params]` to do the same thing:
+
+      forward "/shapes/tasks/:project_id",
+        to: Electric.Plug,
+        shape: [
+          from(t in Task, where: t.active == true),
+          project_id: :project_id
+        ]
+
+  """
+  @spec shape!(Electric.Phoenix.shape_definition(), dynamic_shape_params()) :: term()
+  def shape!(query, params) when is_list(params) do
+    [query | params]
+  end
+
+  defp dynamic_shape(conn, query, params) do
+    conn = Plug.Conn.fetch_query_params(conn)
+
+    shape =
+      Enum.reduce(params, query, fn
+        {column, {op, param}}, query ->
+          value = conn.params[to_string(param)]
+
+          add_filter(query, column, op, value)
+
+        {column, param}, query ->
+          value = conn.params[to_string(param)]
+          add_filter(query, column, :==, value)
+      end)
+      |> Electric.Client.shape!()
+
+    Plug.Conn.assign(conn, :shape, shape)
+  end
+
+  for op <- @valid_ops do
+    where =
+      {op, [],
+       [
+         {:field, [], [Macro.var(:q, nil), {:^, [], [Macro.var(:column, nil)]}]},
+         {:^, [], [Macro.var(:value, nil)]}
+       ]}
+
+    defp add_filter(query, var!(column), unquote(op), var!(value)) do
+      Ecto.Query.where(query, [q], unquote(where))
+    end
+  end
+
+  @doc ~S"""
+  Send the client configuration for a given shape to the browser.
+
+  ## Example
+
+      get "/my-shapes/messages" do
+        user_id = get_session(conn, :user_id)
+        shape = from(m in Message, where: m.user_id == ^user_id)
+        Electric.Phoenix.Plug.send_configuration(conn, shape)
+      end
+
+      get "/my-shapes/tasks/:project_id" do
+        project_id = conn.params["project_id"]
+
+        if user_has_access_to_project?(project_id) do
+          shape = where(Task, project_id: ^project_id)
+          Electric.Phoenix.Plug.send_configuration(conn, shape)
+        else
+          send_resp(conn, :forbidden, "You do not have permission to view project #{project_id}")
+        end
+      end
+
+  """
+  @spec send_configuration(Plug.Conn.t(), Electric.Phoenix.shape_definition(), Client.t()) ::
+          Plug.Conn.t()
+  def send_configuration(conn, shape_or_queryable, client \\ Electric.Phoenix.client!())
+
+  def send_configuration(conn, shape_or_queryable, client) do
+    configuration = Gateway.configuration(shape_or_queryable, client)
+
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(200, Jason.encode!(configuration))
   end
 end

@@ -60,7 +60,7 @@ defmodule Electric.Phoenix.PlugTest do
     forward "/shapes/users/:user_id/:age",
       to: Electric.Phoenix.Plug,
       shape:
-        Electric.Phoenix.Gateway.shape!(
+        Electric.Phoenix.Plug.shape!(
           from(u in Support.User, where: u.visible == true),
           id: :user_id,
           age: [>: :age]
@@ -87,7 +87,7 @@ defmodule Electric.Phoenix.PlugTest do
         |> where(visible: ^conn.params["visible"], id: ^conn.params["user_id"])
         |> where([u], u.age > ^conn.params["age"])
 
-      Electric.Phoenix.Gateway.send_configuration(conn, shape, MyEnv.client!())
+      Electric.Phoenix.Plug.send_configuration(conn, shape, MyEnv.client!())
     end
   end
 

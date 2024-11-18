@@ -16,9 +16,9 @@ defmodule Electric.Phoenix do
 
   ## Configuration Gateway
 
-  Using `Electric.Phoenix.Gateway.Plug` you can create endpoints that
+  Using `Electric.Phoenix.Plug` you can create endpoints that
   return configuration information for your Electric Typescript clients. See
-  [that module's documentation](`Electric.Phoenix.Gateway.Plug`) for
+  [that module's documentation](`Electric.Phoenix.Plug`) for
   more information.
 
   ## Installation
@@ -45,6 +45,8 @@ defmodule Electric.Phoenix do
         database_id: System.get_env("ELECTRIC_DATABASE_ID", nil)
   """
 
+  @type shape_definition :: Ecto.Queryable.t() | Client.ShapeDefinition.t()
+
   @doc """
   Create a new `Electric.Client` instance based on the application config.
   """
@@ -54,6 +56,4 @@ defmodule Electric.Phoenix do
       database_id: Application.get_env(:electric_phoenix, :database_id)
     )
   end
-
-  defdelegate electric_client_configuration(assigns), to: Electric.Phoenix.Component
 end
