@@ -10,13 +10,13 @@ defmodule Electric.Phoenix.Plug do
   application.
 
   In your Phoenix application, [add a route](https://hexdocs.pm/phoenix/Phoenix.Router.html) to
-  `Electric.Phoenix.Gateway.Plug` specifying a particular shape:
+  `Electric.Phoenix.Plug` specifying a particular shape:
 
       defmodule MyAppWeb.Router do
         scope "/shapes" do
           pipe_through :browser
 
-          get "/todos", Electric.Phoenix.Gateway.Plug,
+          get "/todos", Electric.Phoenix.Plug,
             shape: Electric.Client.shape!("todos", where: "visible = true")
         end
       end
@@ -57,7 +57,7 @@ defmodule Electric.Phoenix.Plug do
         plug :dispatch
 
         forward "/shapes/items",
-          to: Electric.Phoenix.Gateway.Plug,
+          to: Electric.Phoenix.Plug,
           shape: Electric.Client.shape!("items")
 
         match _ do
@@ -74,7 +74,7 @@ defmodule Electric.Phoenix.Plug do
         scope "/" do
           pipe_through :browser
 
-          get "/shape", Electric.Phoenix.Gateway.Plug, []
+          get "/shape", Electric.Phoenix.Plug, []
         end
       end
 
