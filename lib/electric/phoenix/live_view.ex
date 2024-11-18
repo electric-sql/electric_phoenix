@@ -74,29 +74,32 @@ defmodule Electric.Phoenix.LiveView do
   be handled directly in the LiveView component.
 
   - `{:electric, {stream_name, :loaded}}` - sent when the Electric event stream has passed
-  from initial state to update mode.
+    from initial state to update mode.
 
-  - `{:electric, {stream_name, :live}}` - sent when the Electric stream is in `live` mode,
-  that is the initial state has loaded and the client is waiting for updates
-  from the db.
+    This event is useful to show the stream component after
+    the initial sync. Because of the streaming nature of Electric Shapes, the
+    intitial sync can cause flickering as items are added, removed and updated.
 
-  The `{:electric, {stream_name, :live}}` event is useful to show the stream component after
-  the initial sync. Because of the streaming nature of Electric Shapes, the
-  intitial sync can cause flickering as items are added, removed and updated.
+    E.g.:
 
-  E.g.:
+        # in the LiveView component
+        def handle_info({:electric, {_name, :live}}, socket) do
+          {:noreply, assign(socket, :show_stream, true)}
+        end
 
-      # in the LiveView component
-      def handle_info(`{:electric, {_name, :live}}`, socket) do
-        {:noreply, assign(socket, :show_stream, true)}
-      end
-
-      # in the template
-      <div phx-update="stream" class={unless(@show_stream, do: "opacity-0")}>
-        <div :for={{id, item} <- @streams.items} id={id}>
-          <%= item.value %>
+        # in the template
+        <div phx-update="stream" class={unless(@show_stream, do: "opacity-0")}>
+          <div :for={{id, item} <- @streams.items} id={id}>
+            <%= item.value %>
+          </div>
         </div>
-      </div>
+
+  - `{:electric, {stream_name, :live}}` - sent when the Electric stream is in
+    `live` mode, that is the initial state has loaded and the client is
+    up-to-date with the database and is long-polling for new events from the
+    Electric server.
+
+
 
   ## Sub-components
 
