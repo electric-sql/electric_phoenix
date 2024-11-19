@@ -93,6 +93,53 @@ defmodule Electric.Phoenix.Plug do
   - `table` - The Postgres table name (required).
   - `namespace` - The Postgres schema if not specified defaults to `public`.
   - `where` - The [where clause](https://electric-sql.com/docs/guides/shapes#where-clause) to filter items from the shape.
+
+
+  ## Custom Authentication
+
+  The `Electric.Client` allows for generating authentication headers via it's
+  `authenticator` configuration but if you want to include parameters from the
+  request in the authentication tokens, for example including the currently
+  logged in user id, then you can set an `authenticator` directly in the `Electric.Phoenix.Plug` configuration.
+
+  First you must define a function that accepts the `%Plug.Conn{}` of the
+  request, the `%Electric.Client.ShapeDefinition{}` of the endpoint and some
+  (optional) config and returns a map of additional request headers:
+
+      defmodule MyAuthModule do
+        def shape_auth_headers(conn, shape, _opts \\\\ []) do
+          user_id = conn.assigns.user_id
+          signer = Joken.Signer.create("HS256", "my-deep-secret")
+          claims = %{
+            user_id: user_id,
+            table: [shape.namespace, shape.table],
+            where: shape.where
+          }
+          token = Joken.generate_and_sign!(Joken.Config.default_claims(), claims, signer)
+          %{"authorization" => "Bearer \#{token}"}
+        end
+      end
+
+  Now configure the Shape configuration endpoint to use your authentication function:
+
+      forward "/shapes/tasks/:project_id",
+        to: Electric.Plug,
+        authenticator: {MyAuthModule, :shape_auth_headers, _opts = []},
+        shape: [
+          from(t in Task, where: t.active == true),
+          project_id: :project_id
+        ]
+
+
+  Or you can use a capture:
+
+      forward "/shapes/tasks/:project_id",
+        to: Electric.Plug,
+        authenticator: &MyAuthModule.shape_auth_headers/2,
+        shape: [
+          from(t in Task, where: t.active == true),
+          project_id: :project_id
+        ]
   """
 
   use Elixir.Plug.Builder, copy_opts_to_assign: :config
