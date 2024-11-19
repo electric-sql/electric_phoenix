@@ -34,26 +34,33 @@ defmodule Electric.Phoenix do
   ## Configuration
 
   In your `config/config.exs` or `config/runtime.exs` you **must** configure the
-  endpoint for the Electric streaming API:
+  client for the Electric streaming API:
 
       import Config
 
-      config :electric_phoenix,
-        # required
-        electric_url: System.get_env("ELECTRIC_URL", "http://localhost:3000"),
+      config :electric_phoenix, Electric.Client,
+        # one of `base_url` or `endpoint` is required
+        base_url: System.get_env("ELECTRIC_URL", "http://localhost:3000"),
+        # endpoint: System.get_env("ELECTRIC_ENDPOINT", "http://localhost:3000/v1/shape"),
         # optional
         database_id: System.get_env("ELECTRIC_DATABASE_ID", nil)
+
+  See the documentation for [`Electric.Client.new/1`](`Electric.Client.new/1`)
+  for information on the client configuration.
   """
 
   @type shape_definition :: Ecto.Queryable.t() | Client.ShapeDefinition.t()
 
   @doc """
   Create a new `Electric.Client` instance based on the application config.
+
+  See [`Electric.Client.new/1`](`Electric.Client.new/1`) for the available
+  options.
   """
-  def client! do
-    Electric.Client.new!(
-      base_url: Application.fetch_env!(:electric_phoenix, :electric_url),
-      database_id: Application.get_env(:electric_phoenix, :database_id)
-    )
+  def client!(opts \\ []) do
+    :electric_phoenix
+    |> Application.fetch_env!(Electric.Client)
+    |> Keyword.merge(opts)
+    |> Electric.Client.new!()
   end
 end
