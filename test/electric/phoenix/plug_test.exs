@@ -20,6 +20,18 @@ defmodule Electric.Phoenix.PlugTest do
           )
       )
     end
+
+    def authenticate(conn, shape, opts \\ [])
+
+    def authenticate(%Plug.Conn{} = conn, %Electric.Client.ShapeDefinition{} = shape, opts) do
+      mode = Keyword.get(opts, :mode, :fun)
+
+      %{
+        "shape-auth-mode" => to_string(mode),
+        "shape-auth-path" => conn.request_path,
+        "shape-auth-table" => shape.table
+      }
+    end
   end
 
   defmodule MyEnv.TestRouter do
@@ -79,6 +91,18 @@ defmodule Electric.Phoenix.PlugTest do
     forward "/shapes/atom/:visible",
       to: Electric.Phoenix.Plug,
       shape: [Support.User, :visible],
+      client: MyEnv.client!()
+
+    forward "/shapes/authenticator/fun",
+      to: Electric.Phoenix.Plug,
+      shape: Support.User,
+      authenticator: &MyEnv.authenticate/2,
+      client: MyEnv.client!()
+
+    forward "/shapes/authenticator/mfa",
+      to: Electric.Phoenix.Plug,
+      shape: Support.User,
+      authenticator: {MyEnv, :authenticate, [mode: :mfa]},
       client: MyEnv.client!()
 
     get "/shapes/dynamic/:user_id/:age" do
@@ -304,6 +328,44 @@ defmodule Electric.Phoenix.PlugTest do
                "table" => "clothes",
                "where" => "colour = 'red'",
                "headers" => %{}
+             }
+    end
+
+    test "allows for defining a custom authentication fun" do
+      resp =
+        conn(:get, "/shapes/authenticator/fun", %{})
+        |> MyEnv.TestRouter.call([])
+
+      assert Phoenix.ConnTest.json_response(resp, 200) == %{
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
+               "columns" => ["id", "name", "visible", "age"],
+               "headers" => %{
+                 "electric-mock-auth" =>
+                   "0225aed4f0e936943894b874e0e1bb3770189deccadf71980b35acaea066ca9a",
+                 "shape-auth-mode" => "fun",
+                 "shape-auth-path" => "/shapes/authenticator/fun",
+                 "shape-auth-table" => "users"
+               }
+             }
+    end
+
+    test "allows for defining a custom authentication mfa" do
+      resp =
+        conn(:get, "/shapes/authenticator/mfa", %{})
+        |> MyEnv.TestRouter.call([])
+
+      assert Phoenix.ConnTest.json_response(resp, 200) == %{
+               "url" => "https://cloud.electric-sql.com/v1/shape",
+               "table" => "users",
+               "columns" => ["id", "name", "visible", "age"],
+               "headers" => %{
+                 "electric-mock-auth" =>
+                   "0225aed4f0e936943894b874e0e1bb3770189deccadf71980b35acaea066ca9a",
+                 "shape-auth-mode" => "mfa",
+                 "shape-auth-path" => "/shapes/authenticator/mfa",
+                 "shape-auth-table" => "users"
+               }
              }
     end
   end

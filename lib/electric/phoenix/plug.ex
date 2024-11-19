@@ -139,14 +139,30 @@ defmodule Electric.Phoenix.Plug do
           %{shape: {:dynamic, query, opts}}
       end
 
+    auth_opts =
+      case Keyword.get(opts, :authenticator) do
+        nil ->
+          %{}
+
+        {m, f, _a} = mfa when is_atom(m) and is_atom(f) ->
+          %{authenticator: mfa}
+
+        fun when is_function(fun, 2) ->
+          %{authenticator: fun}
+
+        invalid ->
+          raise ArgumentError,
+            message:
+              ":authenticator expects {module, function, opts} or a 2-arity function, got: #{inspect(invalid)}"
+      end
+
     # Unless the client is defined at compile time, unlikely in prod
     # environments because the app will probably be using configuration from
     # the environment, we need to use a function to instantiate the client at
     # runtime.
-    Map.merge(
-      %{client: Keyword.get(opts, :client, &Electric.Phoenix.client!/0)},
-      shape_opts
-    )
+    %{client: Keyword.get(opts, :client, &Electric.Phoenix.client!/0)}
+    |> Map.merge(shape_opts)
+    |> Map.merge(auth_opts)
   end
 
   defp return_configuration(conn, _opts) do
@@ -334,10 +350,37 @@ defmodule Electric.Phoenix.Plug do
   @spec send_configuration(Plug.Conn.t(), Electric.Phoenix.shape_definition(), Client.t()) ::
           Plug.Conn.t()
   def send_configuration(conn, shape_or_queryable, client \\ Electric.Phoenix.client!()) do
-    configuration = Gateway.configuration(shape_or_queryable, client)
+    shape = Electric.Client.shape!(shape_or_queryable)
+    configuration = Gateway.configuration(shape, client)
+    additional_headers = authentication_headers(conn, shape)
+
+    configuration =
+      Map.update(configuration, "headers", additional_headers, &Map.merge(&1, additional_headers))
 
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(200, Jason.encode!(configuration))
+  end
+
+  defp authentication_headers(conn, shape) do
+    conn
+    |> authenticator_fun()
+    |> apply_authenticator_fun(conn, shape)
+  end
+
+  defp apply_authenticator_fun({module, function, opts}, conn, shape) do
+    apply(module, function, [conn, shape, opts])
+  end
+
+  defp apply_authenticator_fun(fun, conn, shape) when is_function(fun, 2) do
+    fun.(conn, shape)
+  end
+
+  defp authenticator_fun(%{assigns: %{config: %{authenticator: authenticator}}}) do
+    authenticator
+  end
+
+  defp authenticator_fun(_conn) do
+    fn _conn, _shape -> %{} end
   end
 end
