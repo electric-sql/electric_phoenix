@@ -397,7 +397,7 @@ defmodule Electric.Phoenix.Plug do
   @spec send_configuration(Plug.Conn.t(), Electric.Phoenix.shape_definition(), Client.t()) ::
           Plug.Conn.t()
   def send_configuration(conn, shape_or_queryable, client \\ Electric.Phoenix.client!()) do
-    shape = Electric.Client.shape!(shape_or_queryable)
+    shape = normalise_shape(shape_or_queryable)
     configuration = Gateway.configuration(shape, client)
     additional_headers = authentication_headers(conn, shape)
 
@@ -407,6 +407,16 @@ defmodule Electric.Phoenix.Plug do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(200, Jason.encode!(configuration))
+  end
+
+  # TODO: remove this once Electric.Client.shape!/1 is idempotent and passes
+  #       through ShapeDefinition structs as-is
+  defp normalise_shape(%Electric.Client.ShapeDefinition{} = shape) do
+    shape
+  end
+
+  defp normalise_shape(queryable) do
+    Electric.Client.shape!(queryable)
   end
 
   defp authentication_headers(conn, shape) do
