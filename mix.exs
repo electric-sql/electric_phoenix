@@ -4,7 +4,7 @@ defmodule Electric.Phoenix.MixProject do
   def project do
     [
       app: :electric_phoenix,
-      version: "0.2.0-rc-3",
+      version: "0.2.0-rc-4",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
