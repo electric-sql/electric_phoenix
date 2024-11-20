@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
             ${{ runner.os }}-deps-
 
-      - name: Restore compiled code
+      - name: Cache build
         uses: actions/cache@v4
         with:
           path: |
