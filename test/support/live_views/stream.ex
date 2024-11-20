@@ -38,13 +38,13 @@ defmodule Electric.Phoenix.LiveViewTest.StreamLive do
      socket
      |> assign(:count, 0)
      |> assign(:test_pid, parent)
-     |> Electric.Phoenix.live_stream(:users, Support.User, client: client)}
+     |> Electric.Phoenix.LiveView.electric_stream(:users, Support.User, client: client)}
   end
 
   def handle_info({:electric, event}, socket) do
     # send messsage to test pid, just for sync
     send(socket.assigns.test_pid, {:electric, event})
-    {:noreply, Electric.Phoenix.stream_update(socket, event)}
+    {:noreply, Electric.Phoenix.LiveView.electric_stream_update(socket, event)}
   end
 
   def handle_info(:ping, socket) do
@@ -171,7 +171,7 @@ defmodule Electric.Phoenix.LiveViewTest.StreamLiveWithComponent do
   end
 
   def handle_info({:electric, event}, socket) do
-    {:noreply, Electric.Phoenix.stream_update(socket, event)}
+    {:noreply, Electric.Phoenix.LiveView.electric_stream_update(socket, event)}
   end
 end
 
@@ -192,9 +192,14 @@ defmodule Electric.Phoenix.LiveViewTest.StreamLiveComponent do
     {:ok, socket}
   end
 
+  def update(%{electric: {:users, :live}}, socket) do
+    send(socket.assigns.test_pid, {:electric, :users, :live})
+    {:ok, socket}
+  end
+
   def update(%{electric: event}, socket) do
     send(socket.assigns.test_pid, {:electric, event})
-    {:ok, Electric.Phoenix.stream_update(socket, event)}
+    {:ok, Electric.Phoenix.LiveView.electric_stream_update(socket, event)}
   end
 
   def update(assigns, socket) do
@@ -202,6 +207,6 @@ defmodule Electric.Phoenix.LiveViewTest.StreamLiveComponent do
      socket
      |> assign(:client, assigns.client)
      |> assign(:test_pid, assigns.test_pid)
-     |> Electric.Phoenix.live_stream(:users, Support.User, client: assigns.client)}
+     |> Electric.Phoenix.LiveView.electric_stream(:users, Support.User, client: assigns.client)}
   end
 end

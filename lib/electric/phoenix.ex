@@ -10,15 +10,15 @@ defmodule Electric.Phoenix do
 
   ## Phoenix.LiveView Streams
 
-  `live_stream/4` wraps
+  `Electric.Phoenix.LiveView.electric_stream/4` integrates with
   [`Phoenix.LiveView.stream/4`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#stream/4)
   and provides a live updating collection of items.
 
   ## Configuration Gateway
 
-  Using `Electric.Phoenix.Gateway.Plug` you can create endpoints that
+  Using `Electric.Phoenix.Plug` you can create endpoints that
   return configuration information for your Electric Typescript clients. See
-  [that module's documentation](`Electric.Phoenix.Gateway.Plug`) for
+  [that module's documentation](`Electric.Phoenix.Plug`) for
   more information.
 
   ## Installation
@@ -34,190 +34,133 @@ defmodule Electric.Phoenix do
   ## Configuration
 
   In your `config/config.exs` or `config/runtime.exs` you **must** configure the
-  endpoint for the Electric streaming API:
+  client for the Electric streaming API:
 
       import Config
 
-      config :electric_phoenix,
-        # required
-        electric_url: System.get_env("ELECTRIC_URL", "http://localhost:3000"),
+      config :electric_phoenix, Electric.Client,
+        # one of `base_url` or `endpoint` is required
+        base_url: System.get_env("ELECTRIC_URL", "http://localhost:3000"),
+        # endpoint: System.get_env("ELECTRIC_ENDPOINT", "http://localhost:3000/v1/shape"),
         # optional
         database_id: System.get_env("ELECTRIC_DATABASE_ID", nil)
+
+  See the documentation for [`Electric.Client.new/1`](`Electric.Client.new/1`)
+  for information on the client configuration.
   """
 
-  @options NimbleOptions.new!(client: [type: {:struct, Electric.Client}])
+  alias Electric.Client.ShapeDefinition
 
-  @type stream_option() ::
-          {:at, integer()}
-          | {:limit, pos_integer()}
-          | {:reset, boolean()}
-          | unquote(NimbleOptions.option_typespec(@options))
+  @shape_keys [:namespace, :where, :columns]
+  @shape_params @shape_keys |> Enum.map(&to_string/1)
 
-  @type stream_options() :: [stream_option()]
+  @type shape_definition :: Ecto.Queryable.t() | Client.ShapeDefinition.t()
+  @type param_override ::
+          {:namespace, String.t()}
+          | {:table, String.t()}
+          | {:where, String.t()}
+          | {:columns, String.t()}
+  @type param_overrides :: [param_override()]
 
   @doc """
   Create a new `Electric.Client` instance based on the application config.
+
+  See [`Electric.Client.new/1`](`Electric.Client.new/1`) for the available
+  options.
   """
-  def client! do
-    Electric.Client.new!(
-      base_url: Application.fetch_env!(:electric_phoenix, :electric_url),
-      database_id: Application.get_env(:electric_phoenix, :database_id)
-    )
-  end
-
-  @doc ~S"""
-  Maintains a LiveView stream from the given Ecto query.
-
-  - `name` The name to use for the LiveView stream.
-  - `query` An [`Ecto`](`Ecto`) query that represents the data to stream from the database.
-
-  For example:
-
-      def mount(_params, _session, socket) do
-        socket =
-          Electric.Phoenix.live_stream(
-            socket,
-            :admins,
-            from(u in Users, where: u.admin == true)
-          )
-        {:ok, socket}
-      end
-
-  This will subscribe to the configured Electric server and keep the list of
-  `:admins` in sync with the database via a `Phoenix.LiveView` stream.
-
-  Updates will be delivered to the view via messages to the LiveView process.
-
-  To handle these you need to add a `handle_info/2` implementation that receives these:
-
-      def handle_info({:electric, event}, socket) do
-        {:noreply, Electric.Phoenix.stream_update(socket, event)}
-      end
-
-  See the docs for
-  [`Phoenix.LiveView.stream/4`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#stream/4)
-  for details on using LiveView streams.
-
-  ## Lifecycle Events
-
-  Most `{:electric, event}` messages are opaque and should be passed directly
-  to the `stream_update/3` function, but there are two events that are meant to
-  be handled directly in the LiveView component.
-
-  - `{:electric, :loaded}` - sent when the Electric event stream has passed
-  from initial state to update mode.
-
-  - `{:electric, :live}` - sent when the Electric stream is in `live` mode,
-  that is the initial state has loaded and the client is waiting for updates
-  from the db.
-
-  The `{:electric, :live}` event is useful to show the stream component after
-  the initial sync. Because of the streaming nature of Electric Shapes, the
-  intitial sync can cause flickering as items are added, removed and updated.
-
-  E.g.:
-
-      # in the LiveView component
-      def handle_info(`{:electric, :live}`, socket) do
-        {:noreply, assign(socket, :show_stream, true)}
-      end
-
-      # in the template
-      <div phx-update="stream" class={unless(@show_stream, do: "opacity-0")}>
-        <div :for={{id, item} <- @streams.items} id={id}>
-          <%= item.value %>
-        </div>
-      </div>
-
-  ## Sub-components
-
-  If you register your Electric stream in a sub-component you will still
-  receive Electric messages in the LiveView's root/parent process.
-
-  `Electric.Phoenix` handles this for you by encapsulating component messages
-  so it can correctly forward on the event to the component.
-
-  So in the parent `LiveView` process you handle the `:electric` messages as
-  above:
-
-      defmodule MyLiveView do
-        use Phoenix.LiveView
-
-        def render(assigns) do
-          ~H\"""
-          <div>
-            <.live_component id="my_component" module={MyComponent} />
-          </div>
-          \"""
-        end
-
-        # We setup the Electric live_stream in the component but update messages will
-        # be sent to the parent process.
-        def handle_info({:electric, event}, socket) do
-          {:noreply, Electric.Phoenix.stream_update(socket, event)}
-        end
-      end
-
-  In the component you must handle these events in the
-  `c:Phoenix.LiveComponent.update/2` callback:
-
-      defmodule MyComponent do
-        use Phoenix.LiveComponent
-
-        def render(assigns) do
-          ~H\"""
-          <div id="users" phx-update="stream">
-            <div :for={{id, user} <- @streams.users} id={id}>
-              <%= user.name %>
-            </div>
-          </div>
-          \"""
-        end
-
-        # Equivalent to the `handle_info({:electric, :live}, socket)` callback
-        # in the parent LiveView.
-        def update(%{electric: :live}, socket) do
-          {:ok, socket}
-        end
-
-        # Equivalent to the `handle_info({:electric, event}, socket)` callback
-        # in the parent LiveView.
-        def update(%{electric: event}, socket) do
-          {:ok, Electric.Phoenix.stream_update(socket, event)}
-        end
-
-        def update(assigns, socket) do
-          {:ok, Electric.Phoenix.live_stream(socket, :users, User)}
-        end
-      end
-  """
-  @spec live_stream(
-          socket :: Phoenix.LiveView.Socket.t(),
-          name :: atom() | String.t(),
-          query :: Ecto.Queryable.t(),
-          opts :: stream_options()
-        ) :: Phoenix.LiveView.Socket.t()
-  def live_stream(socket, name, query, opts \\ []) do
-    Electric.Phoenix.LiveView.stream(socket, name, query, opts)
+  def client!(opts \\ []) do
+    :electric_phoenix
+    |> Application.fetch_env!(Electric.Client)
+    |> Keyword.merge(opts)
+    |> Electric.Client.new!()
   end
 
   @doc """
-  Handle Electric events within a LiveView.
+  Use request query parameters to create a `Electric.Client.ShapeDefinition`.
 
-      def handle_info({:electric, event}, socket) do
-        {:noreply, Electric.Phoenix.stream_update(socket, event, at: 0)}
-      end
+  Useful when creating authorization endpoints that validate a user's access to
+  a specific shape.
 
-  The `opts` are passed to the `Phoenix.LiveView.stream_insert/4` call.
+  ## Parameters
+
+  ### Required
+
+  - `table` - the Postgres [table name](https://electric-sql.com/docs/guides/shapes#table)
+
+    Note: `table` is not required in the parameters if a `:table` override is set.
+
+  ### Optional
+
+  - `where` - the [Shape's where clause](https://electric-sql.com/docs/guides/shapes#where-clause)
+  - `columns` - The columns to include in the shape.
+  - `namespace` - The Postgres namespace (also called `SCHEMA`).
+
+  See
+  [`Electric.Client.ShapeDefinition.new/2`](`Electric.Client.ShapeDefinition.new/2`)
+  for more details on the parameters.
+
+  ### Examples
+
+      # pass the Plug.Conn struct for a request
+      iex> Electric.Phoenix.shape_from_params(%Plug.Conn{params: %{"table" => "items", "where" => "visible = true" }})
+      {:ok, %Electric.Client.ShapeDefinition{table: "items", where: "visible = true"}}
+
+      # or a simple parameter map
+      iex> Electric.Phoenix.shape_from_params(%{"table" => "items", "columns" => "id,name,value" })
+      {:ok, %Electric.Client.ShapeDefinition{table: "items", columns: ["id", "name", "value"]}}
+
+      iex> Electric.Phoenix.shape_from_params(%{"columns" => "id,name,value" })
+      {:error, "Missing `table` parameter"}
+
+  ## Overriding Parameter Values
+
+  If you want to hard-code some elements of the shape, ignoring the values from
+  the request, or to set defaults, then use the `overrides` to set specific
+  values for elements of the shape.
+
+  ### Examples
+
+      iex> Electric.Phoenix.shape_from_params(%{"columns" => "id,name,value"}, table: "things")
+      {:ok, %Electric.Client.ShapeDefinition{table: "things", columns: ["id", "name", "value"]}}
+
+      iex> Electric.Phoenix.shape_from_params(%{"table" => "ignored"}, table: "things")
+      {:ok, %Electric.Client.ShapeDefinition{table: "things"}}
+
   """
-  @spec stream_update(
-          Phoenix.LiveView.Socket.t(),
-          Electric.Phoenix.LiveView.event(),
-          Keyword.t()
-        ) :: Phoenix.LiveView.Socket.t()
-  def stream_update(socket, event, opts \\ []) do
-    Electric.Phoenix.LiveView.stream_update(socket, event, opts)
+  @spec shape_from_params(Plug.Conn.t() | Plug.Conn.params(), overrides :: param_overrides()) ::
+          {:ok, Electric.Client.ShapeDefinition.t()} | {:error, String.t()}
+
+  def shape_from_params(conn_or_map, overrides \\ [])
+
+  def shape_from_params(%Plug.Conn{} = conn, overrides) do
+    %{params: params} = Plug.Conn.fetch_query_params(conn)
+    shape_from_params(params, overrides)
   end
 
-  defdelegate electric_client_configuration(assigns), to: Electric.Phoenix.Component
+  def shape_from_params(params, overrides) when is_map(params) do
+    shape_params =
+      params
+      |> Map.take(@shape_params)
+      |> Map.new(fn
+        {"columns", ""} ->
+          {:columns, nil}
+
+        {"columns", v} when is_binary(v) ->
+          {:columns, :binary.split(v, ",", [:global, :trim_all])}
+
+        {k, v} ->
+          {String.to_existing_atom(k), v}
+      end)
+
+    if table = Keyword.get(overrides, :table, Map.get(params, "table")) do
+      ShapeDefinition.new(
+        table,
+        Enum.map(@shape_keys, fn k ->
+          {k, Keyword.get(overrides, k, Map.get(shape_params, k))}
+        end)
+      )
+    else
+      {:error, "Missing `table` parameter"}
+    end
+  end
 end
