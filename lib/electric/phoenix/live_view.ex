@@ -253,7 +253,7 @@ defmodule Electric.Phoenix.LiveView do
     pid = self()
 
     client
-    |> Electric.Client.stream(query, oneshot: true, replica: :full)
+    |> Electric.Client.stream(query, live: false, replica: :full)
     |> Stream.transform(
       fn -> {[], nil} end,
       &live_stream_message(&1, &2, client, name, query, pid, component),
