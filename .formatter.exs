@@ -1,7 +1,8 @@
 locals_without_parens = [
   # Electric.Phoenix.Router
   shape: 1,
-  shape: 2
+  shape: 2,
+  shape: 3
 ]
 
 [

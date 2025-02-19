@@ -1,14 +1,23 @@
 defmodule Electric.Phoenix.Router do
-  defmacro shape(path, opts \\ []) do
-    relation = build_relation(path, opts)
+  defmacro shape(path) do
+    route(path, build_definition(path, __CALLER__, []))
+  end
 
-    definition =
-      [relation: relation]
-      |> maybe_put(:where, opts)
-      |> maybe_put(:columns, opts)
-      |> maybe_put(:replica, opts)
-      |> maybe_put(:storage, opts)
+  defmacro shape(path, opts) when is_list(opts) do
+    route(path, build_definition(path, __CALLER__, opts))
+  end
 
+  # e.g. shape "/path", Ecto.Query.from(t in MyTable)
+  defmacro shape(path, queryable) when is_tuple(queryable) do
+    route(path, build_shape_from_query(queryable, __CALLER__, []))
+  end
+
+  # e.g. shape "/path", Ecto.Query.from(t in MyTable), replica: :full
+  defmacro shape(path, queryable, opts) when is_tuple(queryable) and is_list(opts) do
+    route(path, build_shape_from_query(queryable, __CALLER__, opts))
+  end
+
+  defp route(path, definition) do
     quote do
       Phoenix.Router.match(
         :get,
@@ -18,6 +27,44 @@ defmodule Electric.Phoenix.Router do
         []
       )
     end
+  end
+
+  defp build_definition(path, caller, opts) when is_list(opts) do
+    case Keyword.fetch(opts, :query) do
+      {:ok, queryable} ->
+        build_shape_from_query(queryable, caller, opts)
+
+      :error ->
+        define_shape(path, opts)
+    end
+  end
+
+  defp build_shape_from_query(queryable, caller, opts) do
+    # build the shape definition from the query at compile time, to avoid
+    # runtime overhead since the query is in the router and not depending on
+    # runtime variables I think this is not problematic
+    {query, _binding} = Code.eval_quoted(queryable, [], caller)
+
+    %{table: table, namespace: namespace, where: where, columns: columns} =
+      Electric.Client.EctoAdapter.shape_from_query!(query)
+
+    [
+      relation: {namespace || "public", table},
+      where: where,
+      columns: columns
+    ]
+    |> maybe_put(:storage, opts)
+    |> maybe_put(:replica, opts)
+  end
+
+  defp define_shape(path, opts) do
+    relation = build_relation(path, opts)
+
+    [relation: relation]
+    |> maybe_put(:where, opts)
+    |> maybe_put(:columns, opts)
+    |> maybe_put(:replica, opts)
+    |> maybe_put(:storage, opts)
   end
 
   defp maybe_put(params, key, opts) do
@@ -69,23 +116,21 @@ defmodule Electric.Phoenix.Router do
 
   defmodule Shape do
     alias Electric.Shapes
+    alias Electric.Plug.ServeShapePlug
 
     @behaviour Plug
 
     def init(opts), do: opts
 
     def call(%{private: %{phoenix_endpoint: endpoint}} = conn, %{shape: shape}) do
-      {_time, config} =
-        :timer.tc(fn ->
-          endpoint.config(:electric)
-        end)
+      config = endpoint.config(:electric)
 
       {:ok, shape_api} =
         config
         |> Keyword.fetch!(:api)
         |> Shapes.Api.predefined_shape(shape)
 
-      Electric.Plug.ServeShapePlug.call(conn, Electric.Plug.ServeShapePlug.init(api: shape_api))
+      ServeShapePlug.call(conn, ServeShapePlug.init(api: shape_api))
     end
   end
 end

@@ -4,6 +4,8 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
   import Phoenix.LiveView.Router
   import Electric.Phoenix.Router
 
+  require Ecto.Query
+
   pipeline :setup_session do
     plug Plug.Session,
       store: :cookie,
@@ -54,6 +56,13 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
       columns: ["id", "title"],
       replica: :full,
       storage: %{compaction: :disabled}
+
+    # support shapes from a query, passed as the 2nd arg
+    shape "/query-where", Ecto.Query.from(t in Support.Todo, where: t.completed == false)
+    # or as query: ...
+    shape "/query-bare", query: Ecto.Query.from(t in Support.Todo)
+    # query version also accepts shape config
+    shape "/query-config", Ecto.Query.from(t in Support.Todo), replica: :full
   end
 
   scope "/api" do
