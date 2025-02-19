@@ -65,14 +65,42 @@ defmodule Electric.Phoenix do
   @doc """
   Create a new `Electric.Client` instance based on the application config.
 
+  To connect your live streams to an externally hosted Electric instance over
+  HTTP, configure your app with the URL of the Electric server:
+
+    # dev.exs
+    config :electric_phoenix, Electric.Client,
+      base_url: "http://localhost:3000"
+
+  If Electric is installed as a dependency of your app, and you wish to connect
+  your live streams to this internal application, then you don't need to configure
+  anything -- `client!/0` will return an `Electric.Client` instance configured to
+  data directly from the running Electric application.
+
   See [`Electric.Client.new/1`](`Electric.Client.new/1`) for the available
   options.
+
   """
   def client!(opts \\ []) do
-    :electric_phoenix
-    |> Application.fetch_env!(Electric.Client)
+    client_config()
     |> Keyword.merge(opts)
-    |> Electric.Client.new!()
+    |> instantiate_client()
+  end
+
+  # embedded is only available if the Client detects that electric is available
+  if Code.ensure_loaded?(Electric.Client.Embedded) do
+    defp instantiate_client([]) do
+      Electric.Client.embedded!()
+    end
+  end
+
+  defp instantiate_client(config) do
+    Electric.Client.new!(config)
+  end
+
+  @doc false
+  def client_config do
+    Application.get_env(:electric_phoenix, Electric.Client, [])
   end
 
   @doc """
