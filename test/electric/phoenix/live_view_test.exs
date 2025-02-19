@@ -240,7 +240,7 @@ defmodule Electric.Phoenix.LiveViewTest do
         Phoenix.LiveViewTest.rendered_to_string(~H"""
           <div>
             <Electric.Phoenix.LiveView.electric_client_configuration client={client!()} shape={Ecto.Query.where(Support.User, visible: true)}>
-              <:script :let={configuration}>
+              <:script :let={configuration} phx-no-curly-interpolation>
                 root.render(React.createElement(MyApp, { client_config: <%= configuration %> }, null))
               </:script>
             </Electric.Phoenix.LiveView.electric_client_configuration> 

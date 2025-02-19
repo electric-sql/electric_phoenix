@@ -344,7 +344,7 @@ defmodule Electric.Phoenix.PlugTest do
                "columns" => ["id", "name", "visible", "age"],
                "headers" => %{
                  "electric-mock-auth" =>
-                   "0225aed4f0e936943894b874e0e1bb3770189deccadf71980b35acaea066ca9a",
+                   "c82eb3e37145e89660e64cb63018d59ce8bc39eaa44cc7a5637927b023639f74",
                  "shape-auth-mode" => "fun",
                  "shape-auth-path" => "/shapes/authenticator/fun",
                  "shape-auth-table" => "users"
@@ -363,7 +363,7 @@ defmodule Electric.Phoenix.PlugTest do
                "columns" => ["id", "name", "visible", "age"],
                "headers" => %{
                  "electric-mock-auth" =>
-                   "0225aed4f0e936943894b874e0e1bb3770189deccadf71980b35acaea066ca9a",
+                   "c82eb3e37145e89660e64cb63018d59ce8bc39eaa44cc7a5637927b023639f74",
                  "shape-auth-mode" => "mfa",
                  "shape-auth-path" => "/shapes/authenticator/mfa",
                  "shape-auth-table" => "users"

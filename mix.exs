@@ -30,14 +30,42 @@ defmodule Electric.Phoenix.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:electric_client, "~> 0.2.1"},
       {:nimble_options, "~> 1.1"},
-      {:phoenix_live_view, "~> 0.20"},
+      {:phoenix_live_view, "~> 1.0"},
       {:plug, "~> 1.0"},
       {:jason, "~> 1.0"},
-      {:ecto_sql, "~> 3.10", optional: true},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:floki, "~> 0.36", only: [:test]}
+      {:ecto_sql, "~> 3.10", optional: true}
+    ] ++ deps_for_env(Mix.env())
+  end
+
+  defp deps_for_env(:test) do
+    [
+      {:floki, "~> 0.36", only: [:test]},
+      {:bandit, "~> 1.5", only: [:test], override: true},
+      {:uuid, "~> 1.1", only: [:test]},
+      {:mox, "~> 1.1", only: [:test]}
+    ] ++ very_temporary_path_based_deps_remove_me!()
+  end
+
+  defp deps_for_env(:dev) do
+    [
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ] ++ very_temporary_path_based_deps_remove_me!()
+  end
+
+  defp deps_for_env(_) do
+    [
+      {:electric_client, ">= 0.3.0-beta.2"},
+      {:electric, ">= 1.0.0-beta.16", optional: true}
+    ]
+  end
+
+  # FIXME: remove path-based dependencies before merging
+  defp very_temporary_path_based_deps_remove_me! do
+    [
+      {:electric,
+       path: "../electric/packages/sync-service/", only: [:dev, :test], override: true},
+      {:electric_client, path: "../electric/packages/elixir-client/", only: [:dev, :test]}
     ]
   end
 
