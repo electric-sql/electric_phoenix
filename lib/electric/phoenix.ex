@@ -47,6 +47,10 @@ defmodule Electric.Phoenix do
 
   See the documentation for [`Electric.Client.new/1`](`Electric.Client.new/1`)
   for information on the client configuration.
+
+  ## Embedding Electric
+
+  **TODO**
   """
 
   alias Electric.Client.ShapeDefinition

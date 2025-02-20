@@ -91,7 +91,8 @@ defmodule Support.ElectricHelpers do
       stack_ready_timeout: Access.get(ctx, :stack_ready_timeout, 100),
       long_poll_timeout: long_poll_timeout(ctx),
       max_age: max_age(ctx),
-      stale_age: stale_age(ctx)
+      stale_age: stale_age(ctx),
+      allow_shape_deletion: allow_shape_deletion(ctx)
     ]
   end
 
@@ -111,4 +112,5 @@ defmodule Support.ElectricHelpers do
   defp max_age(ctx), do: Access.get(ctx, :max_age, 60)
   defp stale_age(ctx), do: Access.get(ctx, :stale_age, 300)
   defp long_poll_timeout(ctx), do: Access.get(ctx, :long_poll_timeout, 20_000)
+  defp allow_shape_deletion(ctx), do: Access.get(ctx, :allow_shape_deletion, false)
 end

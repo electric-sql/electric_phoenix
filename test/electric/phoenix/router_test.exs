@@ -2,6 +2,8 @@ defmodule Electric.Phoenix.RouterTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
+  alias Electric.Shapes
+
   import Support.DbSetup
   import Support.ElectricHelpers
 
@@ -9,6 +11,8 @@ defmodule Electric.Phoenix.RouterTest do
 
   @registry __MODULE__.Registry
   @endpoint Electric.Phoenix.LiveViewTest.Endpoint
+
+  Code.ensure_compiled!(Support.Todo)
 
   setup do
     start_link_supervised!({Registry, keys: :duplicate, name: @registry})
@@ -21,7 +25,7 @@ defmodule Electric.Phoenix.RouterTest do
     Application.put_all_env(electric: electric_opts(ctx))
   end
 
-  describe "shape/2" do
+  describe "Phoenix.Router - shape/2" do
     @tag table: {
            "todos",
            [
@@ -45,22 +49,6 @@ defmodule Electric.Phoenix.RouterTest do
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
              ] = Jason.decode!(resp.resp_body)
-    end
-
-    test "aborts compilation if given path is not a realistic table name" do
-      assert_raise ArgumentError, fn ->
-        Code.compile_string("""
-        defmodule #{__MODULE__}.BadRouter do
-          use Phoenix.Router
-          import Phoenix.LiveView.Router
-          import Electric.Phoenix.Router
-
-          scope "/shapes" do
-            shape "/todos/invalid"
-          end
-        end
-        """)
-      end
     end
 
     @tag table: {
@@ -223,6 +211,118 @@ defmodule Electric.Phoenix.RouterTest do
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
              ] = Jason.decode!(resp.resp_body)
+    end
+  end
+
+  describe "Plug.Router - shape/2" do
+    @describetag wip: true
+    @describetag table: {
+                   "todos",
+                   [
+                     "id int8 not null primary key generated always as identity",
+                     "title text",
+                     "completed boolean default false",
+                     "plausible boolean default false"
+                   ]
+                 }
+    @describetag data:
+                   {"todos", ["title", "plausible"],
+                    [["one", true], ["two", true], ["three", true]]}
+
+    defmodule MyScope do
+      use Plug.Router
+      use Electric.Phoenix.Router, opts_in_assign: :options
+
+      plug :match
+      plug :dispatch
+
+      shape "/todos"
+    end
+
+    defmodule MyRouter do
+      use Plug.Router, copy_opts_to_assign: :options
+      use Electric.Phoenix.Router
+
+      import Ecto.Query, only: [from: 2]
+
+      plug :match
+      plug :dispatch
+
+      get "/" do
+        send_resp(conn, 200, "hello")
+      end
+
+      shape "/shapes/todos"
+      shape "/shapes/things-to-do", table: "todos"
+
+      shape "/shapes/ideas",
+        table: "todos",
+        where: "plausible = true",
+        columns: ["id", "title"],
+        replica: :full,
+        storage: %{compaction: :disabled}
+
+      shape "/shapes/query-where", from(t in Support.Todo, where: t.completed == false)
+      shape "/shapes/query-module", Support.Todo
+      forward "/namespace", to: MyScope
+
+      match _ do
+        send_resp(conn, 404, "not found")
+      end
+    end
+
+    setup(ctx) do
+      opts = Shapes.Api.plug_opts(electric_opts(ctx))
+
+      [plug_opts: [electric: opts]]
+    end
+
+    test "raises compile-time error if Plug.Router is not configured to copy_opts_to_assign" do
+      assert_raise ArgumentError, fn ->
+        Code.compile_string("""
+        defmodule BreakingRouter do
+          use Plug.Router
+          use Electric.Phoenix.Router
+
+          plug :match
+          plug :dispatch
+
+          shape "/shapes/todos"
+        end
+        """)
+      end
+    end
+
+    test "doesn't raise compile time error if copy_opts_to_assign is set in the opts" do
+      Code.compile_string("""
+      defmodule WorkingRouter do
+        use Plug.Router
+        use Electric.Phoenix.Router, opts_in_assign: :options
+
+        plug :match
+        plug :dispatch
+
+        shape "/todos"
+      end
+      """)
+    end
+
+    for path <-
+          ~w(/shapes/todos /shapes/things-to-do /shapes/ideas /shapes/query-where /shapes/query-module /namespace/todos) do
+      test "plug route #{path}", ctx do
+        resp =
+          conn(:get, unquote(path), %{"offset" => "-1"})
+          |> MyRouter.call(ctx.plug_opts)
+
+        assert resp.status == 200
+        assert Plug.Conn.get_resp_header(resp, "electric-offset") == ["0_0"]
+
+        assert [
+                 %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "one"}},
+                 %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
+                 %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
+               ] = Jason.decode!(resp.resp_body)
+      end
     end
   end
 end

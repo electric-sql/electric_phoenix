@@ -1,4 +1,4 @@
-defmodule Electric.Phoenix.ServeShapePlugTest do
+defmodule Electric.Phoenix.Plug.ShapesTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
@@ -48,14 +48,18 @@ defmodule Electric.Phoenix.ServeShapePlugTest do
     :ok
   end
 
-  setup [:with_stack_id_from_test, :with_unique_db, :with_stack, :with_table]
+  setup [:with_stack_id_from_test, :with_unique_db, :with_stack, :with_table, :with_data]
 
   defmodule MyEnv.TestRouter do
     use Plug.Router, copy_opts_to_assign: :config
-    use Electric.Phoenix.Plug.Shapes, path: "/shapes"
+    use Electric.Phoenix.Plug.Shapes
 
-    plug(:match)
-    plug(:dispatch)
+    plug :match
+    plug :dispatch
+
+    forward "/shapes",
+      to: Electric.Phoenix.Plug.Shapes,
+      init_opts: [opts_in_assign: :config]
   end
 
   defp call(conn, plug \\ MyEnv.TestRouter, ctx) do
@@ -65,19 +69,13 @@ defmodule Electric.Phoenix.ServeShapePlugTest do
   end
 
   describe "Plug" do
-    @tag table: {
-           "things",
-           ["id int8 not null primary key generated always as identity", "value text"]
-         }
-    test "provides the standard electric http api", ctx do
-      Postgrex.query!(
-        ctx.db_conn,
-        """
-        insert into things (value) values ('one'), ('two'), ('three');
-        """,
-        []
-      )
+    @describetag table: {
+                   "things",
+                   ["id int8 not null primary key generated always as identity", "value text"]
+                 }
+    @describetag data: {"things", ["value"], [["one"], ["two"], ["three"]]}
 
+    test "provides the standard electric http api", ctx do
       resp =
         conn(:get, "/shapes", %{"table" => "things", "offset" => "-1"})
         |> call(ctx)
@@ -91,6 +89,39 @@ defmodule Electric.Phoenix.ServeShapePlugTest do
                %{"headers" => %{"operation" => "insert"}, "value" => %{"value" => "three"}}
              ] = Jason.decode!(resp.resp_body)
     end
+
+    test "supports DELETEs", ctx do
+      resp =
+        conn(:get, "/shapes", %{"table" => "things", "offset" => "-1"})
+        |> call(ctx)
+
+      assert resp.status == 200
+      [handle] = Plug.Conn.get_resp_header(resp, "electric-handle")
+
+      resp =
+        conn(:delete, "/shapes?handle=#{handle}")
+        |> call(ctx)
+
+      # api is not configured to allow deletes
+      assert resp.status == 405
+
+      resp =
+        conn(:delete, "/shapes?handle=#{handle}")
+        |> call(Map.put(ctx, :allow_shape_deletion, true))
+
+      assert resp.status == 202
+    end
+
+    test "supports OPTIONS", ctx do
+      resp =
+        conn(:options, "/shapes", %{"table" => "things", "offset" => "-1"})
+        |> Plug.Conn.put_req_header("access-control-request-headers", "if-none-match")
+        |> call(ctx)
+
+      assert resp.status == 204
+
+      assert ["if-none-match"] = Plug.Conn.get_resp_header(resp, "access-control-allow-headers")
+    end
   end
 
   describe "Phoenix" do
@@ -98,19 +129,13 @@ defmodule Electric.Phoenix.ServeShapePlugTest do
       Application.put_all_env(electric: electric_opts(ctx))
     end
 
-    @tag table: {
-           "things",
-           ["id int8 not null primary key generated always as identity", "value text"]
-         }
-    test "works", ctx do
-      Postgrex.query!(
-        ctx.db_conn,
-        """
-        insert into things (value) values ('one'), ('two'), ('three');
-        """,
-        []
-      )
+    @describetag table: {
+                   "things",
+                   ["id int8 not null primary key generated always as identity", "value text"]
+                 }
+    @describetag data: {"things", ["value"], [["one"], ["two"], ["three"]]}
 
+    test "provides the full shape api", _ctx do
       resp =
         Phoenix.ConnTest.build_conn()
         |> Phoenix.ConnTest.get("/api", %{table: "things", offset: "-1"})
@@ -123,6 +148,22 @@ defmodule Electric.Phoenix.ServeShapePlugTest do
                %{"headers" => %{"operation" => "insert"}, "value" => %{"value" => "two"}},
                %{"headers" => %{"operation" => "insert"}, "value" => %{"value" => "three"}}
              ] = Jason.decode!(resp.resp_body)
+    end
+
+    test "supports deletes", _ctx do
+      resp =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.get("/api", %{table: "things", offset: "-1"})
+
+      assert resp.status == 200
+      assert [handle] = Plug.Conn.get_resp_header(resp, "electric-handle")
+
+      resp =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.delete("/api", %{handle: handle})
+
+      # method not allowed -- specific to the delete plug...
+      assert resp.status == 405
     end
   end
 end

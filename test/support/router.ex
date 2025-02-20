@@ -58,6 +58,7 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
       storage: %{compaction: :disabled}
 
     # support shapes from a query, passed as the 2nd arg
+    # #sdf
     shape "/query-where", Ecto.Query.from(t in Support.Todo, where: t.completed == false)
     shape "/query-module", Support.Todo
 
@@ -72,6 +73,6 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
   scope "/api" do
     pipe_through [:browser]
 
-    forward "/", Electric.Phoenix.Plug.Shapes, []
+    forward "/", Electric.Phoenix.Plug.Shapes
   end
 end
