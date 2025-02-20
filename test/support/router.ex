@@ -59,10 +59,14 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
 
     # support shapes from a query, passed as the 2nd arg
     shape "/query-where", Ecto.Query.from(t in Support.Todo, where: t.completed == false)
+    shape "/query-module", Support.Todo
+
     # or as query: ...
     shape "/query-bare", query: Ecto.Query.from(t in Support.Todo)
+
     # query version also accepts shape config
     shape "/query-config", Ecto.Query.from(t in Support.Todo), replica: :full
+    shape "/query-config2", Support.Todo, replica: :full
   end
 
   scope "/api" do

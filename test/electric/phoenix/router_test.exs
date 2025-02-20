@@ -197,6 +197,32 @@ defmodule Electric.Phoenix.RouterTest do
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
                %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
              ] = Jason.decode!(resp.resp_body)
+
+      resp =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.get("/shape/query-config2", %{offset: "-1"})
+
+      assert resp.status == 200
+      assert Plug.Conn.get_resp_header(resp, "electric-offset") == ["0_0"]
+
+      assert [
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "one"}},
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
+             ] = Jason.decode!(resp.resp_body)
+
+      resp =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.get("/shape/query-module", %{offset: "-1"})
+
+      assert resp.status == 200
+      assert Plug.Conn.get_resp_header(resp, "electric-offset") == ["0_0"]
+
+      assert [
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "one"}},
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "two"}},
+               %{"headers" => %{"operation" => "insert"}, "value" => %{"title" => "three"}}
+             ] = Jason.decode!(resp.resp_body)
     end
   end
 end
