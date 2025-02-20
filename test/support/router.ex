@@ -37,6 +37,13 @@ defmodule Electric.Phoenix.LiveViewTest.Router do
     get "/shape/generic", Electric.Phoenix.Plug, []
   end
 
+  scope "/todos", Electric.Phoenix.LiveViewTest do
+    pipe_through [:browser]
+
+    get "/all", TodoController, :all
+    get "/complete", TodoController, :complete
+  end
+
   scope "/shape" do
     # by default we take the table name from the path
     # note that this does not handle weird table names that need quoting
