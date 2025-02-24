@@ -225,9 +225,11 @@ defmodule Electric.Phoenix.RouterTest do
                      "plausible boolean default false"
                    ]
                  }
-    @describetag data:
-                   {"todos", ["title", "plausible"],
-                    [["one", true], ["two", true], ["three", true]]}
+    @describetag data: {
+                   "todos",
+                   ["title", "plausible"],
+                   [["one", true], ["two", true], ["three", true]]
+                 }
 
     defmodule MyScope do
       use Plug.Router
