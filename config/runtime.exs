@@ -18,7 +18,6 @@ if config_env() == :test do
   # config :electric_client, Support.Repo, url: database_url
 
   config :electric,
-    provided_database_id: "electric-phoenix-tests",
     start_in_library_mode: true,
     connection_opts: Electric.Utils.obfuscate_password(connection_opts),
     # enable the http api so that the client tests against a real endpoint can

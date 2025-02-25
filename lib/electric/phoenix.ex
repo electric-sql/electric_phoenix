@@ -66,6 +66,10 @@ defmodule Electric.Phoenix do
           | {:columns, String.t()}
   @type param_overrides :: [param_override()]
 
+  defdelegate child_spec(opts), to: Electric.Phoenix.Replication
+  defdelegate plug_opts(), to: Electric.Phoenix.Replication
+  defdelegate plug_opts(opts), to: Electric.Phoenix.Replication
+
   @doc """
   Create a new `Electric.Client` instance based on the application config.
 
