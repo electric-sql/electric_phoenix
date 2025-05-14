@@ -1,4 +1,11 @@
 defmodule Electric.Phoenix.LiveView do
+  @moduledoc """
+  > #### Deprecated {: .error}
+  >
+  > Integration between [Electric](https://electric-sql.com) and [Phoenix
+  > applications](https://www.phoenixframework.org/) is now done via
+  > [`Phoenix.Sync`](https://hexdocs.pm/phoenix_sync).
+  """
   use Phoenix.Component
 
   alias Electric.Client.Message

@@ -16,6 +16,14 @@
 
 # Electric.Phoenix
 
+> [!CAUTION]
+>
+> ## Deprecated
+>
+> Integration between [Electric](https://electric-sql.com) and [Phoenix
+> applications](https://www.phoenixframework.org/) is now done via
+> [`Phoenix.Sync`](https://hexdocs.pm/phoenix_sync).
+
 An adapter to integrate [Electric SQL's sync engine](https://electric-sql.com)
 into [Phoenix web applications](https://www.phoenixframework.org/).
 

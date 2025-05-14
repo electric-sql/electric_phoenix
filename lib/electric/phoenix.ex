@@ -1,5 +1,11 @@
 defmodule Electric.Phoenix do
   @moduledoc """
+  > #### Deprecated {: .error}
+  >
+  > Integration between [Electric](https://electric-sql.com) and [Phoenix
+  > applications](https://www.phoenixframework.org/) is now done via
+  > [`Phoenix.Sync`](https://hexdocs.pm/phoenix_sync).
+
   Wrappers to ease integration of [Electric’s Postgres syncing
   service](https://electric-sql.com) with [Phoenix
   applications](https://www.phoenixframework.org/).

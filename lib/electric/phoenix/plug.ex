@@ -1,5 +1,11 @@
 defmodule Electric.Phoenix.Plug do
   @moduledoc """
+  > #### Deprecated {: .error}
+  >
+  > Integration between [Electric](https://electric-sql.com) and [Phoenix
+  > applications](https://www.phoenixframework.org/) is now done via
+  > [`Phoenix.Sync`](https://hexdocs.pm/phoenix_sync).
+
   Provides an configuration endpoint for use in your Phoenix applications.
 
   Rather than configuring your [Electric Typescript
